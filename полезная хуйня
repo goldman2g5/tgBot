@@ -1,0 +1,49 @@
+import logging
+from aiogram import Bot, Dispatcher, types
+from aiogram.contrib.fsm_storage.memory import MemoryStorage
+from aiogram.dispatcher import FSMContext
+from aiogram.dispatcher.filters import Command
+
+# Устанавливаем уровень логирования
+logging.basicConfig(level=logging.INFO)
+
+# Создаем экземпляр бота и диспетчера
+bot = Bot(token="6073155840:AAEq_nWhpl5qHjIpEEHKQ0cq9GeF_l0cJo4")
+storage = MemoryStorage()
+dp = Dispatcher(bot, storage=storage)
+
+
+# Команда /start
+@dp.message_handler(Command("start"))
+async def cmd_start(message: types.Message):
+    # Отправляем приветственное сообщение
+    await message.reply("Привет! Для размещения канала на мониторинге, нужно добавить бота на канал.")
+
+    # Создаем и отправляем кнопку "Добавить бота"
+    keyboard = types.InlineKeyboardMarkup()
+    keyboard.add(types.InlineKeyboardButton("Добавить бота", url="https://t.me/YOUR_BOT_USERNAME?startgroup=true"))
+    await message.reply("Пожалуйста, добавьте бота на канал.", reply_markup=keyboard)
+
+    # Создаем и отправляем кнопку "Проверить"
+    keyboard = types.InlineKeyboardMarkup()
+    keyboard.add(types.InlineKeyboardButton("Проверить", callback_data="check_channel"))
+    await message.reply("Пожалуйста, добавьте бота на канал и нажмите кнопку \"Проверить\".", reply_markup=keyboard)
+
+
+# Обработчик кнопки "Проверить"
+@dp.callback_query_handler(text="check_channel")
+async def check_channel(callback_query: types.CallbackQuery, state: FSMContext):
+    # Получаем информацию о канале
+    channel_info = await bot.get_chat_member("@YOUR_CHANNEL_USERNAME", bot.id)
+
+    if channel_info.status == "administrator":
+        await bot.answer_callback_query(callback_query.id, "Бот добавлен на канал!")
+    else:
+        await bot.answer_callback_query(callback_query.id, "Бот не был добавлен на канал.")
+
+
+# Запускаем бота
+if __name__ == "__main__":
+    from aiogram import executor
+
+    executor.start_polling(dp, skip_updates=True)
