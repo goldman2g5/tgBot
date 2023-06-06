@@ -6,6 +6,7 @@ from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters import Command
 from aiogram.dispatcher.filters.state import State, StatesGroup
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.utils import exceptions
 
 # Устанавливаем уровень логов для отладки
 logging.basicConfig(level=logging.INFO)
@@ -35,15 +36,19 @@ async def check_bot_in_channel(channel_name: str) -> bool:
     return False
 
 
-# Обработчик команды /start
-@dp.message_handler(Command("start"))
-async def cmd_start(message: types.Message):
-    # Создаем кнопки для меню
+# Function to open the menu
+async def open_menu(chat_id: int):
     markup = InlineKeyboardMarkup(row_width=1)
     markup.add(InlineKeyboardButton("Добавить канал", callback_data="add_channel"),
                InlineKeyboardButton("Управление каналами", callback_data="manage_channels"))
+    await bot.send_message(chat_id, "Меню:", reply_markup=markup)
 
-    await message.answer("Меню:", reply_markup=markup)
+# Обработчик команды /start
+@dp.message_handler(Command("start"))
+async def cmd_start(message: types.Message):
+
+    # Open the menu
+    await open_menu(message.chat.id)
 
 
 # Обработчик нажатий на кнопки меню
@@ -105,18 +110,16 @@ async def process_add_bot(callback_query: types.CallbackQuery, state: FSMContext
 
     await callback_query.message.answer(message)
 
-
 # Обработчик ввода описания
 @dp.message_handler(state=AddChannelStates.waiting_for_channel_description)
 async def process_channel_description(message: types.Message, state: FSMContext):
     data = await state.get_data()
     channel_name = data.get("channel_name")
 
-    print(channel_name)
     if channel_name is None:
         # Handle the case when channel_name is not available in the state
         await message.answer("Ошибка: Не удалось получить информацию о канале.")
-
+        await state.finish()
         return
 
     channel_description = message.text
@@ -142,6 +145,9 @@ async def process_channel_description(message: types.Message, state: FSMContext)
         await message.answer("Channel information saved successfully.")
     else:
         await message.answer("Failed to save channel information.")
+
+    await open_menu(message.chat.id)
+
     await state.finish()
 
 if __name__ == "__main__":
