@@ -1,5 +1,8 @@
+import base64
 import logging
 import requests
+import io
+import json
 from aiogram import Bot, Dispatcher, types
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.dispatcher import FSMContext
@@ -131,16 +134,33 @@ async def process_channel_description(message: types.Message, state: FSMContext)
     chat = await bot.get_chat(channel_name)
     members_count = await bot.get_chat_members_count(chat.id)
 
+    # Get the channel avatar
+    avatar_bytes = None
+    if chat.photo:
+        avatar = chat.photo
+        avatar_file = io.BytesIO()
+        await avatar.download_small(destination=avatar_file)
+        avatar_bytes = avatar_file.getvalue()
+
+    # Convert avatar bytes to base64 string
+    avatar_base64 = base64.b64encode(avatar_bytes).decode() if avatar_bytes else None
+
     # Write channel information to the database using the API
     api_url = "http://localhost:8053/api/Channel"
 
     data = {
         "Name": channel_name,
         "Description": channel_description,
-        "Members": members_count
+        "Members": members_count,
+        "Avatar": avatar_base64
     }
 
-    response = requests.post(api_url, json=data)
+    json_data = json.dumps(data)  # Serialize the data to JSON
+    print(json_data)
+
+
+    response = requests.post(api_url, json=json_data)
+    print(response.text)
     if response.status_code == 201:
         await message.answer("Channel information saved successfully.")
     else:
@@ -149,6 +169,7 @@ async def process_channel_description(message: types.Message, state: FSMContext)
     await open_menu(message.chat.id)
 
     await state.finish()
+
 
 if __name__ == "__main__":
     # Запуск бота
