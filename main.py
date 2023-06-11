@@ -105,6 +105,7 @@ async def process_channel_menu(callback_query: types.CallbackQuery):
     # Create inline buttons for channel menu
     markup = InlineKeyboardMarkup(row_width=1)
     markup.add(
+        InlineKeyboardButton("Edit info", callback_data=f"customization_{channel_id}"),
         InlineKeyboardButton("Subscription", callback_data=f"subscription_{channel_id}"),
         InlineKeyboardButton("Notifications", callback_data=f"notifications_{channel_id}"),
         InlineKeyboardButton("Bump", callback_data=f"bump_{channel_id}"),
