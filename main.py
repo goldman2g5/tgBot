@@ -46,10 +46,10 @@ async def open_menu(chat_id: int):
                InlineKeyboardButton("Управление каналами", callback_data="manage_channels"))
     await bot.send_message(chat_id, "Меню:", reply_markup=markup)
 
+
 # Обработчик команды /start
 @dp.message_handler(Command("start"))
 async def cmd_start(message: types.Message):
-
     # Open the menu
     await open_menu(message.chat.id)
 
@@ -113,6 +113,7 @@ async def process_add_bot(callback_query: types.CallbackQuery, state: FSMContext
 
     await callback_query.message.answer(message)
 
+
 # Обработчик ввода описания
 @dp.message_handler(state=AddChannelStates.waiting_for_channel_description)
 async def process_channel_description(message: types.Message, state: FSMContext):
@@ -149,17 +150,17 @@ async def process_channel_description(message: types.Message, state: FSMContext)
     api_url = "http://localhost:8053/api/Channel"
 
     data = {
-        "Name": channel_name,
-        "Description": channel_description,
-        "Members": members_count,
-        "Avatar": avatar_base64
+        "id": 0,
+        "name": channel_name,
+        "description": channel_description,
+        "members": members_count,
+        "avatar": avatar_base64
     }
 
     json_data = json.dumps(data)  # Serialize the data to JSON
     print(json_data)
 
-
-    response = requests.post(api_url, json=json_data)
+    response = requests.post(api_url, json=data)
     print(response.text)
     if response.status_code == 201:
         await message.answer("Channel information saved successfully.")
