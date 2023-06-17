@@ -1,6 +1,16 @@
 from typing import List
-
+import aiohttp
 import requests
+
+
+# Function to save user info in the database
+def save_user_info(user_id, chat_id):
+    user = {
+        "TelegramId": user_id,
+        "ChatId": chat_id
+    }
+    response = requests.post("http://localhost:8053/Api/User", json=user)
+    print(response)
 
 
 # Function to save channel information to the database
@@ -8,7 +18,6 @@ async def save_channel_information(channel_name: str, channel_description: str, 
                                    user_id: int) -> bool:
     # Write channel information to the database using the API
     api_url = "http://localhost:8053/api/Channel"
-    print(user_id)
 
     data = {
         "id": 0,
@@ -16,8 +25,26 @@ async def save_channel_information(channel_name: str, channel_description: str, 
         "description": channel_description,
         "members": members_count,
         "avatar": avatar_base64,
-        "user": user_id
+        "user": user_id,
     }
+
+    response = requests.post(api_url, json=data)
+    if response.status_code == 201:
+        return True
+    else:
+        return False
+
+
+async def save_channel_access(user_id, channel_id):
+    api_url = "http://localhost:8053/Api/ChannelAccess"
+
+    data = {
+        "userId": user_id,
+        "channelId": int(channel_id) if channel_id is not None else None
+    }
+
+    print(user_id)
+    print(channel_id)
 
     response = requests.post(api_url, json=data)
     print(response.text)

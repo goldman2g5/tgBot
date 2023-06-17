@@ -10,6 +10,9 @@ from states import AddChannelStates
 # Handler for the /start command
 @dp.message_handler(Command("start"))
 async def cmd_start(message: types.Message):
+    # Write user info to the database
+    save_user_info(message.from_user.id, message.chat.id)
+
     # Open the menu
     await open_menu(message.chat.id)
 
