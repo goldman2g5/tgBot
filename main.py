@@ -2,14 +2,13 @@ import base64
 import io
 import logging
 from typing import List
-
-import requests
 from aiogram import Bot, Dispatcher, types
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters import Command
 from aiogram.dispatcher.filters.state import State, StatesGroup
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+from api import *
 
 # Set the log level for debugging
 logging.basicConfig(level=logging.INFO)
@@ -301,19 +300,6 @@ async def process_channel_description(message: types.Message, state: FSMContext)
 
     channel_description = message.text
 
-    # Save channel information to the database
-    if await save_channel_information(channel_name, channel_description, user_id):  # Pass user_id to the function
-        await message.answer("Channel information saved successfully.")
-    else:
-        await message.answer("Failed to save channel information.")
-
-    await open_menu(message.chat.id)
-
-    await state.finish()
-
-
-# Function to save channel information to the database
-async def save_channel_information(channel_name: str, channel_description: str, user_id: int) -> bool:
     # Retrieve the member count
     chat = await bot.get_chat(channel_name)
     members_count = await bot.get_chat_members_count(chat.id)
@@ -329,25 +315,16 @@ async def save_channel_information(channel_name: str, channel_description: str, 
     # Convert avatar bytes to base64 string
     avatar_base64 = base64.b64encode(avatar_bytes).decode() if avatar_bytes else None
 
-    # Write channel information to the database using the API
-    api_url = "http://localhost:8053/api/Channel"
-    print(user_id)
-
-    data = {
-        "id": 0,
-        "name": channel_name,
-        "description": channel_description,
-        "members": members_count,
-        "avatar": avatar_base64,
-        "user": user_id
-    }
-
-    response = requests.post(api_url, json=data)
-    print(response.text)
-    if response.status_code == 201:
-        return True
+    # Save channel information to the database
+    if await save_channel_information(channel_name, channel_description, members_count, avatar_base64,
+                                      user_id):  # Pass members_count and avatar_base64 to the function
+        await message.answer("Channel information saved successfully.")
     else:
-        return False
+        await message.answer("Failed to save channel information.")
+
+    await open_menu(message.chat.id)
+
+    await state.finish()
 
 
 if __name__ == "__main__":
