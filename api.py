@@ -29,7 +29,6 @@ async def save_channel_information(channel_name: str, channel_description: str, 
     }
 
     response = requests.post(api_url, json=data)
-    print(response.text)
     if response.status_code == 201:
         return response.json().get("id")
     else:
@@ -44,11 +43,7 @@ async def save_channel_access(user_id, channel_id):
         "channelId": int(channel_id) if channel_id is not None else None
     }
 
-    print(user_id)
-    print(channel_id)
-
     response = requests.post(api_url, json=data)
-    print(response.text)
     if response.status_code == 201:
         return True
     else:
@@ -59,7 +54,9 @@ async def save_channel_access(user_id, channel_id):
 def get_user_channels(user_id: int) -> List[dict]:
     api_url = f"http://localhost:8053/api/Channel/ByUser/{user_id}"
     response = requests.get(api_url)
+    print(response.status_code)
     print(response.text)
+    print(user_id)
     if response.status_code == 200:
         return response.json()
     else:

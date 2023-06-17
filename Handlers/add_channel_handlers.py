@@ -100,7 +100,8 @@ async def process_channel_description(message: types.Message, state: FSMContext)
     avatar_base64 = base64.b64encode(avatar_bytes).decode() if avatar_bytes else None
 
     # Retrieve user_id from the database
-    db_user_id = await get_user_id_from_database(user_id)  # Replace with your method to retrieve the user ID from the database
+    db_user_id = await get_user_id_from_database(
+        user_id)  # Replace with your method to retrieve the user ID from the database
 
     if db_user_id is None:
         await message.answer("Error: Failed to get user information.")
@@ -108,9 +109,9 @@ async def process_channel_description(message: types.Message, state: FSMContext)
         return
 
     # Save channel information to the database and get the channel ID
-    channel_id = await save_channel_information(channel_name, channel_description, members_count, avatar_base64, user_id, channel_id)
+    channel_id = await save_channel_information(channel_name, channel_description, members_count, avatar_base64,
+                                                user_id, channel_id)
     print(channel_id)
-
 
     if channel_id == 0:
         await message.answer("Failed to save channel information.")
