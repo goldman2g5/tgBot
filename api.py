@@ -10,14 +10,13 @@ def save_user_info(user_id, chat_id):
         "ChatId": chat_id
     }
     response = requests.post("http://localhost:8053/Api/User", json=user)
-    print(response)
 
 
-# Function to save channel information to the database
 async def save_channel_information(channel_name: str, channel_description: str, members_count: int, avatar_base64: str,
                                    user_id: int) -> bool:
     # Write channel information to the database using the API
     api_url = "http://localhost:8053/api/Channel"
+    print(user_id)
 
     data = {
         "id": 0,
@@ -25,10 +24,11 @@ async def save_channel_information(channel_name: str, channel_description: str, 
         "description": channel_description,
         "members": members_count,
         "avatar": avatar_base64,
-        "user": user_id,
+        "user": user_id
     }
 
     response = requests.post(api_url, json=data)
+    print(response.text)
     if response.status_code == 201:
         return True
     else:
@@ -58,6 +58,7 @@ async def save_channel_access(user_id, channel_id):
 def get_user_channels(user_id: int) -> List[dict]:
     api_url = f"http://localhost:8053/api/Channel/ByUser/{user_id}"
     response = requests.get(api_url)
+    print(response.text)
     if response.status_code == 200:
         return response.json()
     else:
@@ -98,4 +99,42 @@ async def bump_channel(channel_id: int):
     except requests.exceptions.RequestException as e:
         # Handle exception (e.g., connection error)
         print("Error:", e)
+        return None
+
+
+# Function to retrieve the user ID from the database
+async def get_user_id_from_database(user_id: int):
+    try:
+        # Make a GET request to the API endpoint for retrieving user by Telegram ID
+        response = requests.get(f"http://localhost:8053/api/User/ByTelegramId/{user_id}")
+        if response.status_code == 200:
+            user_data = response.json()
+            if user_data:
+                return user_data["id"]  # Assuming the response contains a single user object and you want the ID
+            else:
+                return None
+        else:
+            print(f"Error retrieving user ID from the database. Status code: {response.text}")
+            return None
+    except Exception as e:
+        print(f"Error retrieving user ID from the database: {e}")
+        return None
+
+
+# Function to retrieve the channel ID from the database
+async def get_channel_id_from_database(channel_id: int):
+    try:
+        # Make a GET request to the API endpoint for retrieving channel by Telegram ID
+        response = requests.get(f"http://localhost:8053/api/Channel/ByTelegramId/{channel_id}")
+        if response.status_code == 200:
+            channel_data = response.json()
+            if channel_data:
+                return channel_data["id"]  # Assuming the response contains a single channel object and you want the ID
+            else:
+                return None
+        else:
+            print(f"Error retrieving channel ID from the database. Status code: {response.text}")
+            return None
+    except Exception as e:
+        print(f"Error retrieving channel ID from the database: {e}")
         return None
