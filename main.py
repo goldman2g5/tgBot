@@ -12,6 +12,7 @@ from aiogram.dispatcher.filters import Command
 from aiogram.dispatcher.filters.state import State, StatesGroup
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, User
 from aiogram.utils import exceptions
+from api import get_notification_status, toggle_notification_status, save_channel_information, get_user_channels
 
 # Set the log level for debugging
 logging.basicConfig(level=logging.INFO)
@@ -55,16 +56,6 @@ async def open_menu(chat_id: int):
 async def cmd_start(message: types.Message):
     # Open the menu
     await open_menu(message.chat.id)
-
-
-# Function to retrieve user's channels from the API
-def get_user_channels(user_id: int) -> List[dict]:
-    api_url = f"http://localhost:8053/api/Channel/ByUser/{user_id}"
-    response = requests.get(api_url)
-    if response.status_code == 200:
-        return response.json()
-    else:
-        return []
 
 
 # Handler for menu button callbacks
@@ -121,19 +112,11 @@ async def process_channel_menu(callback_query: types.CallbackQuery):
 async def process_notifications_button(callback_query: types.CallbackQuery):
     channel_id = int(callback_query.data.split("_")[1])
 
-    # Retrieve the current notification status from the API
-    api_url = f"http://localhost:8053/api/Channel/{channel_id}"
-    response = requests.get(api_url)
-    if response.status_code == 404:
-        # Channel not found
-        await callback_query.message.answer("Channel not found.")
-        return
-
-    channel_data = response.json()
-    notifications_enabled = channel_data.get("notifications")
+    notifications_enabled = get_notification_status(channel_id)
 
     if notifications_enabled is None:
-        notifications_enabled = False  # Assume notifications are disabled if the value is null
+        await callback_query.message.answer("Channel not found.")
+        return
 
     # Create inline buttons for notifications menu
     markup = InlineKeyboardMarkup(row_width=1)
@@ -152,33 +135,25 @@ async def process_notifications_button(callback_query: types.CallbackQuery):
         reply_markup=markup
     )
 
+
 # Handler for toggle/disable button
 @dp.callback_query_handler(lambda c: c.data.startswith("toggle_notifications_"))
 async def process_toggle_notifications_button(callback_query: types.CallbackQuery):
     channel_id = int(callback_query.data.split("_")[2])
 
-    # Retrieve the current notification status from the API
-    api_url = f"http://localhost:8053/api/Channel/{channel_id}"
-    response = requests.get(api_url)
-    if response.status_code == 404:
-        # Channel not found
-        await callback_query.message.answer("Channel not found.")
-        return
-
-    channel_data = response.json()
-    notifications_enabled = channel_data.get("notifications")
+    notifications_enabled = get_notification_status(channel_id)
 
     if notifications_enabled is None:
-        notifications_enabled = False  # Assume notifications are disabled if the value is null
+        await callback_query.message.answer("Channel not found.")
+        return
 
     # Toggle the notification status
     new_notifications_enabled = not notifications_enabled
 
-    # Update the notification status in the API using a PUT request
-    api_toggle_url = f"http://localhost:8053/api/Channel/ToggleNotifications/{channel_id}"
-    put_data = {"notifications": new_notifications_enabled}
-    response = requests.put(api_toggle_url, json=put_data)
-    if response.status_code != 204:
+    # Update the notification status in the API
+    success = toggle_notification_status(channel_id, new_notifications_enabled)
+
+    if not success:
         await callback_query.message.answer("Failed to toggle notifications.")
         return
 
@@ -198,6 +173,7 @@ async def process_toggle_notifications_button(callback_query: types.CallbackQuer
         text=f"Notifications is {'on' if new_notifications_enabled else 'off'}",
         reply_markup=markup
     )
+
 
 # Handler for subscription button
 @dp.callback_query_handler(lambda c: c.data.startswith("subscription_"))
@@ -303,44 +279,6 @@ async def process_channel_description(message: types.Message, state: FSMContext)
     await open_menu(message.chat.id)
 
     await state.finish()
-
-
-# Function to save channel information to the database
-async def save_channel_information(channel_name: str, channel_description: str, user_id: int) -> bool:
-    # Retrieve the member count
-    chat = await bot.get_chat(channel_name)
-    members_count = await bot.get_chat_members_count(chat.id)
-
-    # Get the channel avatar
-    avatar_bytes = None
-    if chat.photo:
-        avatar = chat.photo
-        avatar_file = io.BytesIO()
-        await avatar.download_small(destination=avatar_file)
-        avatar_bytes = avatar_file.getvalue()
-
-    # Convert avatar bytes to base64 string
-    avatar_base64 = base64.b64encode(avatar_bytes).decode() if avatar_bytes else None
-
-    # Write channel information to the database using the API
-    api_url = "http://localhost:8053/api/Channel"
-    print(user_id)
-
-    data = {
-        "id": 0,
-        "name": channel_name,
-        "description": channel_description,
-        "members": members_count,
-        "avatar": avatar_base64,
-        "user": user_id
-    }
-
-    response = requests.post(api_url, json=data)
-    print(response.text)
-    if response.status_code == 201:
-        return True
-    else:
-        return False
 
 
 if __name__ == "__main__":
