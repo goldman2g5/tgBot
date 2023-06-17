@@ -68,67 +68,13 @@ async def process_add_bot(callback_query: types.CallbackQuery, state: FSMContext
     await callback_query.message.answer(message)
 
 
-# # Handler for entering the channel description
-# @dp.message_handler(state=AddChannelStates.waiting_for_channel_description)
-# async def process_channel_description(message: types.Message, state: FSMContext):
-#     data = await state.get_data()
-#     channel_name = data.get("channel_name")
-#     user_id = data.get("user_id")  # Retrieve the user's ID from the state
-#     channel_id = data.get("channel_id")  # Retrieve the channel_id from the state
-#
-#     if channel_name is None:
-#         # Handle the case when channel_name is not available in the state
-#         await message.answer("Error: Failed to get channel information.")
-#         await state.finish()
-#         return
-#
-#     channel_description = message.text
-#
-#     # Retrieve the member count
-#     chat = await bot.get_chat(channel_name)
-#     members_count = await bot.get_chat_members_count(chat.id)
-#
-#     # Get the channel avatar
-#     avatar_bytes = None
-#     if chat.photo:
-#         avatar = chat.photo
-#         avatar_file = io.BytesIO()
-#         await avatar.download_small(destination=avatar_file)
-#         avatar_bytes = avatar_file.getvalue()
-#
-#     # Convert avatar bytes to base64 string
-#     avatar_base64 = base64.b64encode(avatar_bytes).decode() if avatar_bytes else None
-#
-#     # # Retrieve user_id and channel_id from the database
-#     # db_user_id = await get_user_id_from_database(user_id)  # Replace with your method to retrieve the user ID from the database
-#     # db_channel_id = await get_channel_id_from_database(channel_id)  # Replace with your method to retrieve the channel ID from the database
-#     #
-#     # if db_user_id is None or db_channel_id is None:
-#     #     await message.answer("Error: Failed to get user or channel information.")
-#     #     await state.finish()
-#     #     return
-#
-#     # Save channel information to the database
-#     channel_info_saved = await save_channel_information(channel_name, channel_description, members_count, avatar_base64, user_id, channel_id)
-#     # channel_access_saved = await save_channel_access(db_user_id, db_channel_id)
-#     # if channel_info_saved and channel_access_saved:
-#     if channel_info_saved:
-#         await message.answer("Channel information and access saved successfully.")
-#     elif not channel_info_saved:
-#         await message.answer("Failed to save channel information.")
-#     else:
-#         await message.answer("Failed to save channel access.")
-#
-#     await open_menu(message.chat.id)
-#
-#     await state.finish()
-
 # Handler for entering the channel description
 @dp.message_handler(state=AddChannelStates.waiting_for_channel_description)
 async def process_channel_description(message: types.Message, state: FSMContext):
     data = await state.get_data()
     channel_name = data.get("channel_name")
     user_id = data.get("user_id")  # Retrieve the user's ID from the state
+    channel_id = data.get("channel_id")  # Retrieve the channel_id from the state
 
     if channel_name is None:
         # Handle the case when channel_name is not available in the state
@@ -153,13 +99,31 @@ async def process_channel_description(message: types.Message, state: FSMContext)
     # Convert avatar bytes to base64 string
     avatar_base64 = base64.b64encode(avatar_bytes).decode() if avatar_bytes else None
 
-    # Save channel information to the database
-    if await save_channel_information(channel_name, channel_description, members_count, avatar_base64,
-                                      user_id):  # Pass members_count and avatar_base64 to the function
-        await message.answer("Channel information saved successfully.")
-    else:
+    # Retrieve user_id from the database
+    db_user_id = await get_user_id_from_database(user_id)  # Replace with your method to retrieve the user ID from the database
+
+    if db_user_id is None:
+        await message.answer("Error: Failed to get user information.")
+        await state.finish()
+        return
+
+    # Save channel information to the database and get the channel ID
+    channel_id = await save_channel_information(channel_name, channel_description, members_count, avatar_base64, user_id, channel_id)
+    print(channel_id)
+
+
+    if channel_id == 0:
         await message.answer("Failed to save channel information.")
+        await state.finish()
+        return
+
+    # Save channel access
+    channel_access_saved = await save_channel_access(db_user_id, channel_id)
+
+    if channel_access_saved:
+        await message.answer("Channel information and access saved successfully.")
+    else:
+        await message.answer("Failed to save channel access.")
 
     await open_menu(message.chat.id)
-
     await state.finish()

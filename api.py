@@ -13,7 +13,7 @@ def save_user_info(user_id, chat_id):
 
 
 async def save_channel_information(channel_name: str, channel_description: str, members_count: int, avatar_base64: str,
-                                   user_id: int) -> bool:
+                                   user_id: int, channel_id: int) -> int:
     # Write channel information to the database using the API
     api_url = "http://localhost:8053/api/Channel"
     print(user_id)
@@ -24,15 +24,16 @@ async def save_channel_information(channel_name: str, channel_description: str, 
         "description": channel_description,
         "members": members_count,
         "avatar": avatar_base64,
-        "user": user_id
+        "user": user_id,
+        "telegram_id": channel_id
     }
 
     response = requests.post(api_url, json=data)
     print(response.text)
     if response.status_code == 201:
-        return True
+        return response.json().get("id")
     else:
-        return False
+        return 0
 
 
 async def save_channel_access(user_id, channel_id):
