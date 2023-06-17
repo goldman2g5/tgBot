@@ -1,30 +1,13 @@
 import base64
 import io
 import logging
-from typing import List
-from aiogram import Bot, Dispatcher, types
-from aiogram.contrib.fsm_storage.memory import MemoryStorage
+from aiogram import types
 from aiogram.dispatcher import FSMContext
-from aiogram.dispatcher.filters import Command
-from aiogram.dispatcher.filters.state import State, StatesGroup
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+from Handlers.menu_handlers import open_menu
 from api import *
-
-# Set the log level for debugging
-logging.basicConfig(level=logging.INFO)
-
-# Initialize the bot and dispatcher
-bot = Bot(token="6073155840:AAEq_nWhpl5qHjIpEEHKQ0cq9GeF_l0cJo4")
-storage = MemoryStorage()
-dp = Dispatcher(bot, storage=storage)
-
-
-# Class describing the states for adding a channel
-class AddChannelStates(StatesGroup):
-    waiting_for_channel_name = State()
-    waiting_for_check = State()
-    waiting_for_channel_description = State()
-    waiting_for_user_id = State()  # New state for user ID
+from bot import bot, dp
+from states import AddChannelStates
 
 
 # Function to check if the bot is added to the channel
@@ -37,56 +20,6 @@ async def check_bot_in_channel(channel_name: str) -> bool:
     except Exception as e:
         logging.error(f"Error checking bot membership: {e}")
     return False
-
-
-# Function to open the menu
-async def open_menu(chat_id: int):
-    markup = InlineKeyboardMarkup(row_width=1)
-    markup.add(InlineKeyboardButton("Add Channel", callback_data="add_channel"),
-               InlineKeyboardButton("Manage Channels", callback_data="manage_channels"))
-    await bot.send_message(chat_id, "Menu:", reply_markup=markup)
-
-
-# Handler for the /start command
-@dp.message_handler(Command("start"))
-async def cmd_start(message: types.Message):
-    # Open the menu
-    await open_menu(message.chat.id)
-
-
-# Function to retrieve user's channels from the API
-def get_user_channels(user_id: int) -> List[dict]:
-    api_url = f"http://localhost:8053/api/Channel/ByUser/{user_id}"
-    response = requests.get(api_url)
-    if response.status_code == 200:
-        return response.json()
-    else:
-        return []
-
-
-# Handler for menu button callbacks
-@dp.callback_query_handler(lambda c: c.data in ["add_channel", "manage_channels"])
-async def process_menu_callbacks(callback_query: types.CallbackQuery):
-    if callback_query.data == "add_channel":
-        await AddChannelStates.waiting_for_channel_name.set()
-        await callback_query.message.answer("Please enter the channel name:")
-    elif callback_query.data == "manage_channels":
-        # Get the user's ID
-        user_id = callback_query.from_user.id
-
-        # Retrieve the user's channels from the API
-        channels = get_user_channels(user_id)
-
-        if channels:
-            # Create inline buttons for each channel
-            markup = InlineKeyboardMarkup(row_width=1)
-            for channel in channels:
-                button_text = f"{channel['name']} - {channel['description']}"
-                callback_data = f"channel_{channel['id']}"
-                markup.add(InlineKeyboardButton(button_text, callback_data=callback_data))
-            await callback_query.message.answer("Your channels:", reply_markup=markup)
-        else:
-            await callback_query.message.answer("You don't have any channels.")
 
 
 # Handler for channel menu callbacks
@@ -111,30 +44,6 @@ async def process_channel_menu(callback_query: types.CallbackQuery):
     )
 
     await callback_query.message.answer("Channel menu:", reply_markup=markup)
-
-
-# Retrieve the current notification status from the API
-def get_notification_status(channel_id):
-    api_url = f"http://localhost:8053/api/Channel/{channel_id}"
-    response = requests.get(api_url)
-    if response.status_code == 404:
-        return None  # Channel not found
-
-    channel_data = response.json()
-    notifications_enabled = channel_data.get("notifications")
-
-    if notifications_enabled is None:
-        notifications_enabled = False  # Assume notifications are disabled if the value is null
-
-    return notifications_enabled
-
-
-# Toggle the notification status in the API
-def toggle_notification_status(channel_id, new_notifications_enabled):
-    api_toggle_url = f"http://localhost:8053/api/Channel/ToggleNotifications/{channel_id}"
-    put_data = {"notifications": new_notifications_enabled}
-    response = requests.put(api_toggle_url, json=put_data)
-    return response.status_code == 204
 
 
 # Handler for notifications button

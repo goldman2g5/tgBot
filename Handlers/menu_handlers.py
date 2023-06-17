@@ -1,0 +1,45 @@
+from aiogram import types
+from aiogram.dispatcher.filters import Command
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+from bot import bot, dp
+from api import *
+from states import AddChannelStates
+
+# Function to open the menu
+async def open_menu(chat_id: int):
+    markup = InlineKeyboardMarkup(row_width=1)
+    markup.add(InlineKeyboardButton("Add Channel", callback_data="add_channel"),
+               InlineKeyboardButton("Manage Channels", callback_data="manage_channels"))
+    await bot.send_message(chat_id, "Menu:", reply_markup=markup)
+
+
+# Handler for the /start command
+@dp.message_handler(Command("start"))
+async def cmd_start(message: types.Message):
+    # Open the menu
+    await open_menu(message.chat.id)
+
+
+# Handler for menu button callbacks
+@dp.callback_query_handler(lambda c: c.data in ["add_channel", "manage_channels"])
+async def process_menu_callbacks(callback_query: types.CallbackQuery):
+    if callback_query.data == "add_channel":
+        await AddChannelStates.waiting_for_channel_name.set()
+        await callback_query.message.answer("Please enter the channel name:")
+    elif callback_query.data == "manage_channels":
+        # Get the user's ID
+        user_id = callback_query.from_user.id
+
+        # Retrieve the user's channels from the API
+        channels = get_user_channels(user_id)
+
+        if channels:
+            # Create inline buttons for each channel
+            markup = InlineKeyboardMarkup(row_width=1)
+            for channel in channels:
+                button_text = f"{channel['name']} - {channel['description']}"
+                callback_data = f"channel_{channel['id']}"
+                markup.add(InlineKeyboardButton(button_text, callback_data=callback_data))
+            await callback_query.message.answer("Your channels:", reply_markup=markup)
+        else:
+            await callback_query.message.answer("You don't have any channels.")
