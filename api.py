@@ -59,3 +59,16 @@ def toggle_notification_status(channel_id, new_notifications_enabled):
     put_data = {"notifications": new_notifications_enabled}
     response = requests.put(api_toggle_url, json=put_data)
     return response.status_code == 204
+
+
+# Process channel bump
+async def bump_channel(channel_id: int):
+    api_url = "http://localhost:8053/api/Channel/Bump/" + str(channel_id)
+
+    try:
+        response = requests.post(api_url)
+        return response
+    except requests.exceptions.RequestException as e:
+        # Handle exception (e.g., connection error)
+        print("Error:", e)
+        return None

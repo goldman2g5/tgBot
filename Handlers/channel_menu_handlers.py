@@ -1,6 +1,7 @@
+import datetime
 from aiogram import types
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-from api import get_notification_status, toggle_notification_status
+from api import get_notification_status, toggle_notification_status, bump_channel
 from bot import dp, bot
 from misc import open_menu
 
@@ -127,3 +128,31 @@ async def process_subscription_choice(callback_query: types.CallbackQuery):
 
     # Send a message indicating the chosen subscription
     await callback_query.message.answer(f"You have chosen {subscription_type} subscription for channel {channel_id}.")
+
+
+# Handler for bump button callback
+@dp.callback_query_handler(lambda c: c.data.startswith("bump_"))
+async def process_bump_button(callback_query: types.CallbackQuery):
+    channel_id = int(callback_query.data.split("_")[1])
+
+    # Call the API method to bump the channel
+    response = await bump_channel(channel_id)
+
+    if response is not None:
+        if response.status_code == 204:
+            await callback_query.answer("Server bumped successfully.")
+        elif response.status_code == 400:
+            time_left = response.headers.get("X-TimeLeft")
+            if time_left:
+                time_left = int(time_left)
+                duration = datetime.timedelta(seconds=time_left)
+                hours = duration.seconds // 3600
+                minutes = (duration.seconds // 60) % 60
+                time_left_str = f"{hours} hours and {minutes} minutes"
+                await callback_query.answer(f"Next bump available in {time_left_str}.")
+            else:
+                await callback_query.answer("Failed to bump the channel.")
+        else:
+            await callback_query.answer("Failed to bump the channel.")
+    else:
+        await callback_query.answer("An error occurred while attempting to bump the channel.")
