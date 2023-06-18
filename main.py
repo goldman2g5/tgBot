@@ -14,100 +14,77 @@ from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters.state import State, StatesGroup
 from aiogram.dispatcher.middlewares import BaseMiddleware
 
-# Redis connection setup
-redis_host = "localhost"
-redis_port = 6379
-redis_queue_name = "notification_queue"
-redis_conn = redis.Redis(host=redis_host, port=redis_port)
+import asyncio
+import time
+import requests
+import json
+import redis
+from aiogram import Bot, Dispatcher, types
+from aiogram.contrib.fsm_storage.redis import RedisStorage2
+from aiogram.dispatcher import FSMContext
+from aiogram.dispatcher.middlewares import BaseMiddleware
 
+async def check_notifications():
+    while True:
+        try:
+            # Fetch notifications from the API
+            response = requests.get('http://localhost:8053/api/Notification')
+            response.raise_for_status()  # Raise an exception for non-2xx responses
 
-# Notification service setup
-class NotificationService:
-    def __init__(self):
-        self.bot = None
-
-    async def start(self, bot):
-        self.bot = bot
-        await self.process_notifications()
-
-    async def process_notifications(self):
-        while True:
-            notification = self.get_notification()
-            if notification:
-                await self.send_notification(notification)
-            else:
-                await asyncio.sleep(1800)  # Wait for 30 minutes
-
-    def get_notification(self):
-        notification = redis_conn.blpop(redis_queue_name, timeout=0)
-        if notification:
-            notification = json.loads(notification[1])
-        return notification
-
-    async def send_notification(self, notification):
-        print("jopa")
-        # Make a request to the API to get the notification details
-        response = requests.get("http://localhost:8053/Api/Notifications")
-        if response.status_code == 200:
             notifications = response.json()
+
+            # Process each notification
             for notification in notifications:
-                if notification["telegramChatId"] == notification["telegramUserId"]:
-                    await self.bot.send_message(
-                        chat_id=notification["telegramChatId"],
-                        text=f"You have a new notification in {notification['channelName']}:\n{notification['sendTime']}"
-                    )
-        else:
-            print("Failed to retrieve notifications.")
+                # Extract required information from the notification
+                channel_name = notification['channelName']
+                send_time = notification['sendTime']
+                telegram_user_id = notification['telegramUserId']
+                telegram_chat_id = notification['telegramChatId']
 
+                # Send the notification to the user using the bot
+                await bot.send_message(telegram_chat_id, f"New notification for {channel_name} at {send_time}")
+
+        except (requests.RequestException, json.JSONDecodeError) as e:
+            # Log the error and continue the loop
+            print(f"Error fetching notifications: {str(e)}")
+
+        # Wait for 30 minutes before checking for new notifications again
+        await asyncio.sleep(30 * 60)
 
 async def background_on_start() -> None:
-    """background task which is created when bot starts"""
+    """Background task which is created when bot starts"""
     while True:
         await asyncio.sleep(5)
         print("Hello World!")
-
-async def background_on_start() -> None:
-    """background task which is created when bot starts"""
-    while True:
-        await asyncio.sleep(5)
-        print("Hello World!")
-
 
 async def background_on_action() -> None:
-    """background task which is created when user asked"""
+    """Background task which is created when the user asked"""
     for _ in range(20):
         await asyncio.sleep(3)
         print("Action!")
-
 
 async def background_task_creator(message: types.Message) -> None:
     """Creates background tasks"""
     asyncio.create_task(background_on_action())
     await message.reply("Another one background task create")
 
-
 async def on_bot_start_up(dispatcher: Dispatcher) -> None:
     """List of actions which should be done before bot start"""
-    notification_service = NotificationService()
-    notification_service.bot = bot
-    # asyncio.create_task(notification_service.process_notifications())
-    asyncio.create_task(background_on_start())  # creates background task
-
+    asyncio.create_task(check_notifications())  # Creates background task
 
 def create_bot_factory() -> None:
     """Creates and starts the bot"""
-    # bot endpoints block:
-    dp.register_message_handler(
-        background_task_creator,
-    )
-    # start bot
+    # Create a Redis client
+    redis_client = redis.Redis(host='localhost', port=6379, db=0)
+
+    # Create an instance of the bot and the dispatcher
+
+    # Bot endpoints block:
+    dp.register_message_handler(background_task_creator)
+
+    # Start the bot
     executor.start_polling(dp, skip_updates=True, on_startup=on_bot_start_up)
-
-
-
 
 # Start the bot
 if __name__ == '__main__':
-    from aiogram import executor
-
     create_bot_factory()
