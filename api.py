@@ -136,3 +136,16 @@ async def get_channel_id_from_database(channel_id: int):
     except Exception as e:
         print(f"Error retrieving channel ID from the database: {e}")
         return None
+
+
+def get_notifications():
+    url = 'http://localhost:8053/Api/Notifications'
+
+    try:
+        response = requests.get(url)
+        response.raise_for_status()  # Raise an exception for non-2xx status codes
+        notifications = response.json()
+        return notifications
+    except requests.exceptions.RequestException as e:
+        print(f"Error retrieving notifications: {e}")
+        return []
