@@ -42,6 +42,7 @@ async def check_notifications():
                 telegram_chat_id = notification['telegramChatId']
 
                 # Send the notification to the user using the bot
+                await asyncio.sleep(5)
                 await bot.send_message(telegram_chat_id, f"New notification for {channel_name} at {send_time}")
 
         except (requests.RequestException, json.JSONDecodeError) as e:

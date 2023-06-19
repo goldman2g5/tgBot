@@ -101,7 +101,7 @@ async def process_channel_description(message: types.Message, state: FSMContext)
 
     # Retrieve user_id from the database
     db_user_id = await get_user_id_from_database(
-        user_id)  # Replace with your method to retrieve the user ID from the database
+        user_id)
 
     if db_user_id is None:
         await message.answer("Error: Failed to get user information.")
