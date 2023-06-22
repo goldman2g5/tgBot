@@ -28,7 +28,9 @@ async def check_notifications():
     while True:
         try:
             # Fetch notifications from the API
+            print("OCHELLO POLNOE")
             response = requests.get('http://localhost:8053/api/Notification')
+            print(f"{response.json()}")
             response.raise_for_status()  # Raise an exception for non-2xx responses
 
             notifications = response.json()
@@ -40,17 +42,23 @@ async def check_notifications():
                 send_time = notification['sendTime']
                 telegram_user_id = notification['telegramUserId']
                 telegram_chat_id = notification['telegramChatId']
+                channel_id = notification['channelId']
 
                 # Send the notification to the user using the bot
                 await asyncio.sleep(5)
-                await bot.send_message(telegram_chat_id, f"New notification for {channel_name} at {send_time}")
+
+                markup = InlineKeyboardMarkup(row_width=1)
+                markup.add(
+                    InlineKeyboardButton("Bump", callback_data=f"bump_{channel_id}"),
+                )
+                await bot.send_message(telegram_chat_id, f"Its time to bump {channel_name}!", reply_markup=markup)
 
         except (requests.RequestException, json.JSONDecodeError) as e:
             # Log the error and continue the loop
             print(f"Error fetching notifications: {str(e)}")
 
         # Wait for 30 minutes before checking for new notifications again
-        await asyncio.sleep(30 * 60)
+        await asyncio.sleep(1 * 60)
 
 async def background_on_start() -> None:
     """Background task which is created when bot starts"""

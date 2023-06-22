@@ -2,6 +2,8 @@ from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from bot import bot
 import logging
 
+notification_delay = 1
+
 
 # Function to check if the bot is added to the channel
 async def check_bot_in_channel(channel_name: str) -> bool:
