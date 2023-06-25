@@ -3,7 +3,7 @@ from aiogram import types
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from api import get_notification_status, toggle_notification_status, bump_channel
 from bot import dp, bot
-from misc import open_menu
+from misc import open_menu, create_notifications_menu
 
 
 # Handler for channel menu callbacks
@@ -41,18 +41,6 @@ async def process_channel_menu(callback_query: types.CallbackQuery):
     else:
         # Send a new message with the inline keyboard
         await callback_query.message.answer(reply_markup=markup)
-
-
-# Common function to create inline buttons for notifications menu
-def create_notifications_menu(channel_id, notifications_enabled):
-    markup = InlineKeyboardMarkup(row_width=1)
-    toggle_text = "Disable" if notifications_enabled else "Enable"
-    toggle_callback_data = f"toggle_notifications_{channel_id}"
-    markup.add(
-        InlineKeyboardButton(f"{toggle_text} Notifications", callback_data=toggle_callback_data),
-        InlineKeyboardButton("Back to Menu", callback_data=f"channel_{channel_id}")
-    )
-    return markup
 
 
 # Handler for notifications button
