@@ -6,17 +6,17 @@ from bot import dp, bot
 from misc import open_menu, create_notifications_menu
 
 
-# Handler for channel menu callbacks
-@dp.callback_query_handler(
-    lambda c: c.data.startswith("channel_") or c.data == "back_to_menu")
-async def process_channel_menu(callback_query: types.CallbackQuery):
-    if callback_query.data == "back_to_menu":
-        # Open the main menu
-        await open_menu(callback_query.message.chat.id)
+@dp.callback_query_handler(lambda c: c.data == "back_to_menu")
+async def back_to_menu_handler(callback_query: types.CallbackQuery):
+    # Open the main menu
+    await open_menu(callback_query.message.chat.id)
 
-        # # Clear all messages produced by the module
-        # await clear_module_messages(callback_query.message.chat.id)
+    # # Clear all messages produced by the module
+    # await clear_module_messages(callback_query.message.chat.id)
 
+
+@dp.callback_query_handler(lambda c: c.data.startswith("channel_"))
+async def channel_menu_handler(callback_query: types.CallbackQuery):
     channel_id = int(callback_query.data.split("_")[1])
 
     # Create inline buttons for channel menu
