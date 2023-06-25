@@ -8,8 +8,6 @@ from bot import dp, bot
 from misc import check_bot_in_channel, open_menu
 from states import AddChannelStates
 
-
-
 import base64
 import io
 from aiogram import types
@@ -21,14 +19,29 @@ from misc import check_bot_in_channel, open_menu
 from states import AddChannelStates
 
 
+
 # Handler for entering the channel name
 @dp.message_handler(state=AddChannelStates.waiting_for_channel_name)
 async def process_channel_name(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    channel_name_message_id = data.get("channel_name_message_id")
+    print(channel_name_message_id)
     channel_name = "@" + message.text
 
     # Save the channel name in the context
     await state.update_data(channel_name=channel_name)
     await state.update_data(message_ids=[])
+
+    # Get the message IDs from the state
+    data = await state.get_data()
+    message_ids = data.get("message_ids", [])
+
+    # Add the message IDs to the list
+    message_ids.append(message.message_id)
+    print(message_ids)
+    # Add the trigger message ID to the list
+    message_ids.append(channel_name_message_id)
+    print(message_ids)
 
     # Retrieve the channel ID using bot.get_chat
     try:
@@ -46,8 +59,9 @@ async def process_channel_name(message: types.Message, state: FSMContext):
     await message.answer("To add a channel for monitoring, "
                          "you need to add the bot to the channel.", reply_markup=markup)
 
+    message_ids.append(message.message_id)
     # Add the message ID to the list
-    await state.update_data(message_ids=[message.message_id])
+    await state.update_data(message_ids=message_ids)
 
     await AddChannelStates.waiting_for_check.set()
 
@@ -160,7 +174,9 @@ async def process_channel_description(message: types.Message, state: FSMContext)
 
     # Add the message IDs to the list
     message_ids.append(message.message_id)
+    print(message_ids)
     message_ids.append(sent_message.message_id)
+    print(message_ids)
 
     # Save the updated message IDs list in the state
     await state.update_data(message_ids=message_ids)
@@ -170,7 +186,7 @@ async def process_channel_description(message: types.Message, state: FSMContext)
 
     # Add the current message ID to the list
     message_ids.append(message.message_id)
-
+    print(message_ids)
     # Delete the messages
     for msg_id in message_ids:
         try:

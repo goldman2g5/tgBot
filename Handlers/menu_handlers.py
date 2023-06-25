@@ -1,5 +1,5 @@
 from aiogram import types
-from aiogram.dispatcher.filters import Command
+from aiogram.dispatcher.filters import Command, state
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from api import *
 from bot import dp, bot
@@ -42,8 +42,12 @@ async def back_to_menu_handler(callback_query: types.CallbackQuery):
 
 @dp.callback_query_handler(lambda c: c.data == "add_channel")
 async def add_channel_handler(callback_query: types.CallbackQuery):
+    # Set the state
     await AddChannelStates.waiting_for_channel_name.set()
-    await callback_query.message.answer("Please enter the channel name:")
+    message = await callback_query.message.answer("Please enter the channel name:")
+    print(message.message_id)
+
+    await dp.current_state().update_data(channel_name_message_id=message.message_id)
 
 
 @dp.callback_query_handler(lambda c: c.data == "manage_channels")
