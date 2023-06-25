@@ -6,9 +6,6 @@ from bot import dp, bot
 from misc import open_menu, create_notifications_menu
 
 
-
-
-
 @dp.callback_query_handler(lambda c: c.data.startswith("channel_"))
 async def channel_menu_handler(callback_query: types.CallbackQuery):
     channel_id = int(callback_query.data.split("_")[1])
