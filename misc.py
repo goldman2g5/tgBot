@@ -18,11 +18,17 @@ async def check_bot_in_channel(channel_name: str) -> bool:
 
 
 # Function to open the menu
-async def open_menu(chat_id: int):
+async def open_menu(chat_id: int, message_id: int):
     markup = InlineKeyboardMarkup(row_width=1)
     markup.add(InlineKeyboardButton("Add Channel", callback_data="add_channel"),
                InlineKeyboardButton("Manage Channels", callback_data="manage_channels"))
-    await bot.send_message(chat_id, "Menu:", reply_markup=markup)
+
+    await bot.edit_message_text(
+        chat_id=chat_id,
+        message_id=message_id,
+        reply_markup=markup,
+        text="Main menu"
+    )
 
 
 # Common function to create inline buttons for notifications menu

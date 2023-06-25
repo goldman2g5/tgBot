@@ -128,6 +128,6 @@ async def process_channel_description(message: types.Message, state: FSMContext)
     else:
         await message.answer("Failed to save channel access.")
 
-    await open_menu(message.chat.id)
+    await open_menu(message.chat.id, message.message_id)
 
     await state.finish()
