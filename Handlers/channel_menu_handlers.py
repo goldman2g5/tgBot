@@ -7,12 +7,15 @@ from misc import open_menu
 
 
 # Handler for channel menu callbacks
-@dp.callback_query_handler(lambda c: c.data.startswith("channel_") or c.data == "back_to_menu")
+@dp.callback_query_handler(
+    lambda c: c.data.startswith("channel_") or c.data == "back_to_menu")
 async def process_channel_menu(callback_query: types.CallbackQuery):
     if callback_query.data == "back_to_menu":
         # Open the main menu
         await open_menu(callback_query.message.chat.id)
-        return
+
+        # # Clear all messages produced by the module
+        # await clear_module_messages(callback_query.message.chat.id)
 
     channel_id = int(callback_query.data.split("_")[1])
 
@@ -24,10 +27,31 @@ async def process_channel_menu(callback_query: types.CallbackQuery):
         InlineKeyboardButton("Notifications", callback_data=f"notifications_{channel_id}"),
         InlineKeyboardButton("Bump", callback_data=f"bump_{channel_id}"),
         InlineKeyboardButton("Customization", callback_data=f"customization_{channel_id}"),
-        InlineKeyboardButton("Back to Menu", callback_data="back_to_menu")
+        InlineKeyboardButton("Back to Menu", callback_data="manage_channels")
     )
 
-    await callback_query.message.answer("Channel menu:", reply_markup=markup)
+    if callback_query.message.reply_markup:
+        # Edit the existing message with the updated inline keyboard
+        await bot.edit_message_reply_markup(
+            chat_id=callback_query.message.chat.id,
+            message_id=callback_query.message.message_id,
+            reply_markup=markup
+        )
+    else:
+        # Send a new message with the inline keyboard
+        await callback_query.message.answer("Channel menu:", reply_markup=markup)
+
+
+# Common function to create inline buttons for notifications menu
+def create_notifications_menu(channel_id, notifications_enabled):
+    markup = InlineKeyboardMarkup(row_width=1)
+    toggle_text = "Disable" if notifications_enabled else "Enable"
+    toggle_callback_data = f"toggle_notifications_{channel_id}"
+    markup.add(
+        InlineKeyboardButton(f"{toggle_text} Notifications", callback_data=toggle_callback_data),
+        InlineKeyboardButton("Back to Menu", callback_data=f"channel_{channel_id}")
+    )
+    return markup
 
 
 # Handler for notifications button
@@ -42,13 +66,7 @@ async def process_notifications_button(callback_query: types.CallbackQuery):
         return
 
     # Create inline buttons for notifications menu
-    markup = InlineKeyboardMarkup(row_width=1)
-    toggle_text = "Disable" if notifications_enabled else "Enable"
-    toggle_callback_data = f"toggle_notifications_{channel_id}"
-    markup.add(
-        InlineKeyboardButton(f"{toggle_text} Notifications", callback_data=toggle_callback_data),
-        InlineKeyboardButton("Back to Menu", callback_data="back_to_menu")
-    )
+    markup = create_notifications_menu(channel_id, notifications_enabled)
 
     # Edit the existing message with the updated notification status and toggle button
     await bot.edit_message_text(
@@ -81,13 +99,7 @@ async def process_toggle_notifications_button(callback_query: types.CallbackQuer
         return
 
     # Create inline buttons for notifications menu
-    markup = InlineKeyboardMarkup(row_width=1)
-    toggle_text = "Disable" if new_notifications_enabled else "Enable"
-    toggle_callback_data = f"toggle_notifications_{channel_id}"
-    markup.add(
-        InlineKeyboardButton(f"{toggle_text} Notifications", callback_data=toggle_callback_data),
-        InlineKeyboardButton("Back to Menu", callback_data="back_to_menu")
-    )
+    markup = create_notifications_menu(channel_id, new_notifications_enabled)
 
     # Edit the existing message with the updated notification status and toggle button
     await bot.edit_message_text(
@@ -109,11 +121,20 @@ async def process_subscription_button(callback_query: types.CallbackQuery):
         InlineKeyboardButton("Lite", callback_data=f"subscription_choice_{channel_id}_lite"),
         InlineKeyboardButton("Pro", callback_data=f"subscription_choice_{channel_id}_pro"),
         InlineKeyboardButton("Premium", callback_data=f"subscription_choice_{channel_id}_premium"),
-        InlineKeyboardButton("Back to Menu", callback_data="back_to_menu")
+        InlineKeyboardButton("Back to Menu", callback_data=f"channel_{channel_id}")
     )
 
     with open('subscription_image.jpg', 'rb') as photo_file:
-        await callback_query.message.reply_photo(photo_file, reply_markup=markup)
+        if callback_query.message.reply_markup:
+            # Edit the existing message with the updated inline keyboard
+            await bot.edit_message_reply_markup(
+                chat_id=callback_query.message.chat.id,
+                message_id=callback_query.message.message_id,
+                reply_markup=markup
+            )
+        else:
+            # Send a new message with the photo and inline keyboard
+            await callback_query.message.reply_photo(photo_file, reply_markup=markup)
 
 
 # Handler for subscription choice buttons
@@ -140,7 +161,7 @@ async def process_bump_button(callback_query: types.CallbackQuery):
 
     if response is not None:
         if response.status_code == 204:
-            await callback_query.answer("Server bumped successfully.")
+            await callback_query.answer("Channel bumped successfully.")
         elif response.status_code == 400:
             time_left = response.headers.get("X-TimeLeft")
             if time_left:

@@ -17,6 +17,8 @@ async def process_channel_name(message: types.Message, state: FSMContext):
     # Save the channel name in the context
     await state.update_data(channel_name=channel_name)
 
+    await state.update_data(message_ids=[])
+
     # Retrieve the channel ID using bot.get_chat
     try:
         chat = await bot.get_chat(channel_name)
@@ -32,7 +34,7 @@ async def process_channel_name(message: types.Message, state: FSMContext):
     markup.add(InlineKeyboardButton("Check", callback_data="add_bot"))
     await message.answer("To add a channel for monitoring, "
                          "you need to add the bot to the channel.", reply_markup=markup)
-
+    print(message.message_id)
     await AddChannelStates.waiting_for_check.set()
 
 
@@ -54,7 +56,7 @@ async def process_add_bot(callback_query: types.CallbackQuery, state: FSMContext
             if member.status in ("administrator", "creator"):
                 # Store channel_name, user_id, and channel_id in the state
                 await state.update_data(channel_name=channel_name, user_id=user.id, channel_id=channel_id)
-                await callback_query.message.answer("Success! Bot added to the channel.")
+                await callback_query.answer("Success! Bot added to the channel.")
                 await callback_query.message.answer("Please enter the channel description:")
                 await AddChannelStates.waiting_for_channel_description.set()
                 return
@@ -65,7 +67,7 @@ async def process_add_bot(callback_query: types.CallbackQuery, state: FSMContext
     else:
         message = "Error: Bot was not added to the channel."
 
-    await callback_query.message.answer(message)
+    await callback_query.answer(message)
 
 
 # Handler for entering the channel description
@@ -100,8 +102,7 @@ async def process_channel_description(message: types.Message, state: FSMContext)
     avatar_base64 = base64.b64encode(avatar_bytes).decode() if avatar_bytes else None
 
     # Retrieve user_id from the database
-    db_user_id = await get_user_id_from_database(
-        user_id)
+    db_user_id = await get_user_id_from_database(user_id)
 
     if db_user_id is None:
         await message.answer("Error: Failed to get user information.")
@@ -109,8 +110,9 @@ async def process_channel_description(message: types.Message, state: FSMContext)
         return
 
     # Save channel information to the database and get the channel ID
-    channel_id = await save_channel_information(channel_name, channel_description, members_count, avatar_base64,
-                                                user_id, channel_id)
+    channel_id = await save_channel_information(
+        channel_name, channel_description, members_count, avatar_base64, user_id, channel_id
+    )
     print(channel_id)
 
     if channel_id == 0:
@@ -127,4 +129,5 @@ async def process_channel_description(message: types.Message, state: FSMContext)
         await message.answer("Failed to save channel access.")
 
     await open_menu(message.chat.id)
+
     await state.finish()

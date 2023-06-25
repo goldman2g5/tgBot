@@ -23,6 +23,7 @@ async def process_menu_callbacks(callback_query: types.CallbackQuery):
     if callback_query.data == "add_channel":
         await AddChannelStates.waiting_for_channel_name.set()
         await callback_query.message.answer("Please enter the channel name:")
+
     elif callback_query.data == "manage_channels":
         # Get the user's ID
         user_id = callback_query.from_user.id
