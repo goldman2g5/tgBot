@@ -36,7 +36,7 @@ async def process_menu_callbacks(callback_query: types.CallbackQuery):
             markup = InlineKeyboardMarkup(row_width=1)
             for channel in channels:
                 button_text = f"{channel['name']} - {channel['description']}"
-                callback_data = f"channel_{channel['id']}"
+                callback_data = f"channel_{channel['id']}_{channel['name']}"
                 markup.add(InlineKeyboardButton(button_text, callback_data=callback_data))
             await callback_query.message.answer("Your channels:", reply_markup=markup)
         else:

@@ -32,14 +32,15 @@ async def process_channel_menu(callback_query: types.CallbackQuery):
 
     if callback_query.message.reply_markup:
         # Edit the existing message with the updated inline keyboard
-        await bot.edit_message_reply_markup(
+        await bot.edit_message_text(
             chat_id=callback_query.message.chat.id,
             message_id=callback_query.message.message_id,
-            reply_markup=markup
+            reply_markup=markup,
+            text=f"Channel menu:",
         )
     else:
         # Send a new message with the inline keyboard
-        await callback_query.message.answer("Channel menu:", reply_markup=markup)
+        await callback_query.message.answer(reply_markup=markup)
 
 
 # Common function to create inline buttons for notifications menu

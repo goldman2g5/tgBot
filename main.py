@@ -74,11 +74,6 @@ async def on_bot_start_up(dispatcher: Dispatcher):
     scheduler.start()
 
 
-def create_bot_factory():
-    # Start the bot and register the startup function
-    executor.start_polling(dp, skip_updates=True, on_startup=on_bot_start_up)
-
-
 # Start the bot
 if __name__ == '__main__':
-    create_bot_factory()
+    executor.start_polling(dp, skip_updates=True, on_startup=on_bot_start_up)
