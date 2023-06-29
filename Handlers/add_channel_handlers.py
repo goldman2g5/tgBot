@@ -19,29 +19,33 @@ from misc import check_bot_in_channel, open_menu
 from states import AddChannelStates
 
 
+async def update_message_ids(state: FSMContext, message_id: int):
+    data = await state.get_data()
+    message_ids = data.get("message_ids", [])
+    message_ids.append(message_id)
+    await state.update_data(message_ids=message_ids)
 
-# Handler for entering the channel name
+
+async def delete_messages(bot, chat_id, message_ids):
+    for msg_id in message_ids:
+        try:
+            await bot.delete_message(chat_id, msg_id)
+        except Exception as e:
+            print(f"Error deleting message {msg_id}: {e}")
+
+
 @dp.message_handler(state=AddChannelStates.waiting_for_channel_name)
 async def process_channel_name(message: types.Message, state: FSMContext):
     data = await state.get_data()
     channel_name_message_id = data.get("channel_name_message_id")
-    print(channel_name_message_id)
     channel_name = "@" + message.text
 
     # Save the channel name in the context
     await state.update_data(channel_name=channel_name)
     await state.update_data(message_ids=[])
 
-    # Get the message IDs from the state
-    data = await state.get_data()
-    message_ids = data.get("message_ids", [])
-
-    # Add the message IDs to the list
-    message_ids.append(message.message_id)
-    print(message_ids)
-    # Add the trigger message ID to the list
-    message_ids.append(channel_name_message_id)
-    print(message_ids)
+    await update_message_ids(state, message.message_id)
+    await update_message_ids(state, channel_name_message_id)
 
     # Retrieve the channel ID using bot.get_chat
     try:
@@ -51,6 +55,7 @@ async def process_channel_name(message: types.Message, state: FSMContext):
         await state.update_data(channel_id=channel_id, user_id=message.from_user.id)
     except Exception as e:
         await message.answer(f"Error: Failed to retrieve the channel ID: {e}")
+        await state.finish()
         return
 
     # Create the "Add Bot" button and send the message
@@ -59,14 +64,11 @@ async def process_channel_name(message: types.Message, state: FSMContext):
     await message.answer("To add a channel for monitoring, "
                          "you need to add the bot to the channel.", reply_markup=markup)
 
-    message_ids.append(message.message_id)
-    # Add the message ID to the list
-    await state.update_data(message_ids=message_ids)
+    await update_message_ids(state, message.message_id)
 
     await AddChannelStates.waiting_for_check.set()
 
 
-# Handler for the "Add Bot" button
 @dp.callback_query_handler(state=AddChannelStates.waiting_for_check, text="add_bot")
 async def process_add_bot(callback_query: types.CallbackQuery, state: FSMContext):
     data = await state.get_data()
@@ -87,17 +89,8 @@ async def process_add_bot(callback_query: types.CallbackQuery, state: FSMContext
                 await callback_query.answer("Success! Bot added to the channel.")
 
                 sent_message = await callback_query.message.answer("Please enter the channel description:")
-
-                # Get the message IDs from the state
-                data = await state.get_data()
-                message_ids = data.get("message_ids", [])
-
-                # Add the message IDs to the list
-                message_ids.append(callback_query.message.message_id)
-                message_ids.append(sent_message.message_id)
-
-                # Save the updated message IDs list in the state
-                await state.update_data(message_ids=message_ids)
+                await update_message_ids(state, callback_query.message.message_id)
+                await update_message_ids(state, sent_message.message_id)
 
                 await AddChannelStates.waiting_for_channel_description.set()
                 return
@@ -111,7 +104,6 @@ async def process_add_bot(callback_query: types.CallbackQuery, state: FSMContext
     await callback_query.answer(message)
 
 
-# Handler for entering the channel description
 @dp.message_handler(state=AddChannelStates.waiting_for_channel_description)
 async def process_channel_description(message: types.Message, state: FSMContext):
     data = await state.get_data()
@@ -164,36 +156,17 @@ async def process_channel_description(message: types.Message, state: FSMContext)
     channel_access_saved = await save_channel_access(db_user_id, channel_id)
 
     if channel_access_saved:
-        sent_message = await message.answer("Channel information and access saved successfully.")
+        sent_message = await message.answer("Channel information saved successfully.")
+
+        await update_message_ids(state, message.message_id)
+        await update_message_ids(state, sent_message.message_id)
+        data = await state.get_data()
+
+        await delete_messages(bot, message.chat.id, data.get("message_ids", []))
+
+        await open_menu(message.chat.id, message.message_id)
+
+        await state.finish()
     else:
-        sent_message = await message.answer("Failed to save channel access.")
-
-    # Get the message IDs from the state
-    data = await state.get_data()
-    message_ids = data.get("message_ids", [])
-
-    # Add the message IDs to the list
-    message_ids.append(message.message_id)
-    print(message_ids)
-    message_ids.append(sent_message.message_id)
-    print(message_ids)
-
-    # Save the updated message IDs list in the state
-    await state.update_data(message_ids=message_ids)
-
-    # Get the message IDs from the state
-    message_ids = data.get("message_ids", [])
-
-    # Add the current message ID to the list
-    message_ids.append(message.message_id)
-    print(message_ids)
-    # Delete the messages
-    for msg_id in message_ids:
-        try:
-            await bot.delete_message(message.chat.id, msg_id)
-        except Exception as e:
-            print(f"Error deleting message {msg_id}: {e}")
-
-    await open_menu(message.chat.id, message.message_id)
-
-    await state.finish()
+        await message.answer("Failed to save channel access.")
+        await state.finish()

@@ -107,7 +107,7 @@ async def get_user_id_from_database(user_id: int):
         if response.status_code == 200:
             user_data = response.json()
             if user_data:
-                return user_data["id"]  # Assuming the response contains a single user object and you want the ID
+                return user_data["id"]
             else:
                 return None
         else:
@@ -126,7 +126,7 @@ async def get_channel_id_from_database(channel_id: int):
         if response.status_code == 200:
             channel_data = response.json()
             if channel_data:
-                return channel_data["id"]  # Assuming the response contains a single channel object and you want the ID
+                return channel_data["id"]
             else:
                 return None
         else:

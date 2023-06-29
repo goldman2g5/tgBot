@@ -1,5 +1,6 @@
 import datetime
 from aiogram import types
+from aiogram.dispatcher import FSMContext
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from api import get_notification_status, toggle_notification_status, bump_channel
 from bot import dp, bot
@@ -33,6 +34,75 @@ async def channel_menu_handler(callback_query: types.CallbackQuery):
         # Send a new message with the inline keyboard
         await callback_query.message.answer(reply_markup=markup)
 
+
+@dp.callback_query_handler(lambda c: c.data.startswith("customization_"))
+async def customization_handler(callback_query: types.CallbackQuery):
+    channel_id = int(callback_query.data.split("_")[1])
+
+    # Create inline buttons for customization options
+    markup = InlineKeyboardMarkup(row_width=1)
+    markup.add(
+        InlineKeyboardButton("Tags", callback_data=f"tags_{channel_id}"),
+        InlineKeyboardButton("Description", callback_data=f"description_{channel_id}"),
+        InlineKeyboardButton("Update Data", callback_data=f"update_data_{channel_id}"),
+        InlineKeyboardButton("Back to Menu", callback_data=f"channel_{channel_id}")
+    )
+
+
+    # Edit a message with the customization options
+    await bot.edit_message_text(
+        chat_id=callback_query.message.chat.id,
+        message_id=callback_query.message.message_id,
+        text=f"ИМЯ КАНАЛА СЮДА ВСТАВЬ ДОЛБАЕБ КАК НИЬБУДЬ СУКА customization options:",
+        reply_markup=markup
+    )
+
+@dp.callback_query_handler(lambda c: c.data.startswith("tags_"))
+async def tags_handler(callback_query: types.CallbackQuery, state: FSMContext):
+    channel_id = int(callback_query.data.split("_")[1])
+
+    # Retrieve the current tags dictionary from the state, or initialize it if it doesn't exist
+    async with state.proxy() as data:
+        tags = data.get("tags")
+        if tags is None:
+            tags = {
+                "News": False,
+                "Games": False,
+                "Trading": False,
+            }
+            data["tags"] = tags
+
+    # Extract the tag and action from the callback data
+    callback_arguments = callback_query.data.split("_")
+    channel_id = callback_query.data.split("_")[1]
+    if len(callback_arguments) > 2:
+        action = callback_query.data.split("_")[2]
+        tag = callback_query.data.split("_")[3]
+        # Update the status of the clicked tag
+        if action == "toggle":
+            tags[tag] = not tags[tag]
+
+    # Update the state with the modified tags dictionary
+    async with state.proxy() as data:
+        data["tags"] = tags
+
+    # Create inline buttons for tags
+    markup = InlineKeyboardMarkup(row_width=1)
+    for tag, selected in tags.items():
+        button_text = f"{tag} ✅" if selected else f"{tag} ❌"
+        callback_data = f"tags_{channel_id}_toggle_{tag}"
+        markup.add(InlineKeyboardButton(button_text, callback_data=callback_data))
+
+    markup.add(InlineKeyboardButton("Save", callback_data=f"save_customization_{channel_id}"))
+    markup.add(InlineKeyboardButton("Back", callback_data=f"customization_{channel_id}"))
+
+    # Send a message with available tags
+    await bot.edit_message_text(
+        chat_id=callback_query.message.chat.id,
+        message_id=callback_query.message.message_id,
+        text="Available tags:",
+        reply_markup=markup
+    )
 
 # Handler for notifications button
 @dp.callback_query_handler(lambda c: c.data.startswith("notifications_"))
