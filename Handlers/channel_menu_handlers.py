@@ -1,8 +1,10 @@
 import datetime
+
+import requests
 from aiogram import types
 from aiogram.dispatcher import FSMContext
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-from api import get_notification_status, toggle_notification_status, bump_channel
+from api import get_notification_status, toggle_notification_status, bump_channel, get_tags
 from bot import dp, bot
 from misc import open_menu, create_notifications_menu
 
@@ -48,7 +50,6 @@ async def customization_handler(callback_query: types.CallbackQuery):
         InlineKeyboardButton("Back to Menu", callback_data=f"channel_{channel_id}")
     )
 
-
     # Edit a message with the customization options
     await bot.edit_message_text(
         chat_id=callback_query.message.chat.id,
@@ -56,6 +57,8 @@ async def customization_handler(callback_query: types.CallbackQuery):
         text=f"ИМЯ КАНАЛА СЮДА ВСТАВЬ ДОЛБАЕБ КАК НИЬБУДЬ СУКА customization options:",
         reply_markup=markup
     )
+
+
 
 @dp.callback_query_handler(lambda c: c.data.startswith("tags_"))
 async def tags_handler(callback_query: types.CallbackQuery, state: FSMContext):
@@ -65,11 +68,7 @@ async def tags_handler(callback_query: types.CallbackQuery, state: FSMContext):
     async with state.proxy() as data:
         tags = data.get("tags")
         if tags is None:
-            tags = {
-                "News": False,
-                "Games": False,
-                "Trading": False,
-            }
+            tags = await get_tags()
             data["tags"] = tags
 
     # Extract the tag and action from the callback data
@@ -103,6 +102,7 @@ async def tags_handler(callback_query: types.CallbackQuery, state: FSMContext):
         text="Available tags:",
         reply_markup=markup
     )
+
 
 # Handler for notifications button
 @dp.callback_query_handler(lambda c: c.data.startswith("notifications_"))
