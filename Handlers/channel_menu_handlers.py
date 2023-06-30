@@ -14,15 +14,15 @@ from misc import open_menu, create_notifications_menu
 @dp.callback_query_handler(lambda c: c.data.startswith("channel_"))
 async def channel_menu_handler(callback_query: types.CallbackQuery):
     channel_id = int(callback_query.data.split("_")[1])
+    channel_name = callback_query.data.split("_")[2]
 
     # Create inline buttons for channel menu
     markup = InlineKeyboardMarkup(row_width=1)
     markup.add(
-        InlineKeyboardButton("Edit info", callback_data=f"customization_{channel_id}"),
-        InlineKeyboardButton("Subscription", callback_data=f"subscription_{channel_id}"),
-        InlineKeyboardButton("Notifications", callback_data=f"notifications_{channel_id}"),
+        InlineKeyboardButton("Subscription", callback_data=f"subscription_{channel_id}_{channel_name}"),
+        InlineKeyboardButton("Notifications", callback_data=f"notifications_{channel_id}_{channel_name}"),
         InlineKeyboardButton("Bump", callback_data=f"bump_{channel_id}"),
-        InlineKeyboardButton("Customization", callback_data=f"customization_{channel_id}"),
+        InlineKeyboardButton("Customization", callback_data=f"customization_{channel_id}_{channel_name}"),
         InlineKeyboardButton("Back to Menu", callback_data="manage_channels")
     )
 
@@ -32,7 +32,7 @@ async def channel_menu_handler(callback_query: types.CallbackQuery):
             chat_id=callback_query.message.chat.id,
             message_id=callback_query.message.message_id,
             reply_markup=markup,
-            text=f"Channel menu:",
+            text=f"{channel_name} Channel menu:",
         )
     else:
         # Send a new message with the inline keyboard
@@ -42,27 +42,30 @@ async def channel_menu_handler(callback_query: types.CallbackQuery):
 @dp.callback_query_handler(lambda c: c.data.startswith("customization_"))
 async def customization_handler(callback_query: types.CallbackQuery):
     channel_id = int(callback_query.data.split("_")[1])
+    channel_name = callback_query.data.split("_")[2]
 
     # Create inline buttons for customization options
     markup = InlineKeyboardMarkup(row_width=1)
     markup.add(
-        InlineKeyboardButton("Tags", callback_data=f"tags_{channel_id}"),
+        InlineKeyboardButton("Tags", callback_data=f"tags_{channel_id}_{channel_name}"),
         InlineKeyboardButton("Description", callback_data=f"description_{channel_id}"),
         InlineKeyboardButton("Update Data", callback_data=f"update_data_{channel_id}"),
-        InlineKeyboardButton("Back to Menu", callback_data=f"channel_{channel_id}")
+        InlineKeyboardButton("Back to Menu", callback_data=f"channel_{channel_id}_{channel_name}")
     )
 
     # Edit a message with the customization options
     await bot.edit_message_text(
         chat_id=callback_query.message.chat.id,
         message_id=callback_query.message.message_id,
-        text=f"ИМЯ КАНАЛА СЮДА ВСТАВЬ ДОЛБАЕБ КАК НИЬБУДЬ СУКА customization options:",
+        text=f"{channel_name} customization options:",
         reply_markup=markup
     )
+
 
 @dp.callback_query_handler(lambda c: c.data.startswith("tags_"))
 async def tags_handler(callback_query: types.CallbackQuery, state: FSMContext):
     channel_id = int(callback_query.data.split("_")[1])
+    channel_name = callback_query.data.split("_")[2]
 
     # Retrieve the current tags dictionary from the state, or initialize it if it doesn't exist
     async with state.proxy() as data:
@@ -73,10 +76,9 @@ async def tags_handler(callback_query: types.CallbackQuery, state: FSMContext):
 
     # Extract the tag and action from the callback data
     callback_arguments = callback_query.data.split("_")
-    channel_id = callback_query.data.split("_")[1]
-    if len(callback_arguments) > 2:
-        action = callback_query.data.split("_")[2]
-        tag = callback_query.data.split("_")[3]
+    if len(callback_arguments) > 3:
+        action = callback_query.data.split("_")[3]
+        tag = callback_query.data.split("_")[4]
         # Update the status of the clicked tag
         if action == "toggle":
             tags[tag] = not tags[tag]
@@ -89,11 +91,11 @@ async def tags_handler(callback_query: types.CallbackQuery, state: FSMContext):
     markup = InlineKeyboardMarkup(row_width=1)
     for tag, selected in tags.items():
         button_text = f"{tag} ✅" if selected else f"{tag} ❌"
-        callback_data = f"tags_{channel_id}_toggle_{tag}"
+        callback_data = f"tags_{channel_id}_{channel_name}_toggle_{tag}"
         markup.add(InlineKeyboardButton(button_text, callback_data=callback_data))
 
     markup.add(InlineKeyboardButton("Save", callback_data=f"save_tags_{channel_id}"))
-    markup.add(InlineKeyboardButton("Back", callback_data=f"customization_{channel_id}"))
+    markup.add(InlineKeyboardButton("Back", callback_data=f"customization_{channel_id}_{channel_name}"))
 
     # Send a message with available tags
     await bot.edit_message_text(
@@ -133,6 +135,7 @@ async def save_tags_handler(callback_query: types.CallbackQuery, state: FSMConte
 @dp.callback_query_handler(lambda c: c.data.startswith("notifications_"))
 async def process_notifications_button(callback_query: types.CallbackQuery):
     channel_id = int(callback_query.data.split("_")[1])
+    channel_name = callback_query.data.split("_")[2]
 
     notifications_enabled = get_notification_status(channel_id)
 
@@ -141,7 +144,7 @@ async def process_notifications_button(callback_query: types.CallbackQuery):
         return
 
     # Create inline buttons for notifications menu
-    markup = create_notifications_menu(channel_id, notifications_enabled)
+    markup = create_notifications_menu(channel_id, channel_name, notifications_enabled)
 
     # Edit the existing message with the updated notification status and toggle button
     await bot.edit_message_text(
@@ -189,6 +192,7 @@ async def process_toggle_notifications_button(callback_query: types.CallbackQuer
 @dp.callback_query_handler(lambda c: c.data.startswith("subscription_"))
 async def process_subscription_button(callback_query: types.CallbackQuery):
     channel_id = int(callback_query.data.split("_")[1])
+    channel_name = callback_query.data.split("_")[2]
 
     # Create inline buttons for subscription options
     markup = InlineKeyboardMarkup(row_width=1)
@@ -196,7 +200,7 @@ async def process_subscription_button(callback_query: types.CallbackQuery):
         InlineKeyboardButton("Lite", callback_data=f"subscription_choice_{channel_id}_lite"),
         InlineKeyboardButton("Pro", callback_data=f"subscription_choice_{channel_id}_pro"),
         InlineKeyboardButton("Premium", callback_data=f"subscription_choice_{channel_id}_premium"),
-        InlineKeyboardButton("Back to Menu", callback_data=f"channel_{channel_id}")
+        InlineKeyboardButton("Back to Menu", callback_data=f"channel_{channel_id}_{channel_name}")
     )
 
     with open('subscription_image.jpg', 'rb') as photo_file:

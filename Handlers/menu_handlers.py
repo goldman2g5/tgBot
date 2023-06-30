@@ -63,7 +63,7 @@ async def manage_channels_handler(callback_query: types.CallbackQuery):
         markup = InlineKeyboardMarkup(row_width=1)
         for channel in channels:
             button_text = f"{channel['name']} - {channel['description']}"
-            callback_data = f"channel_{channel['id']}"
+            callback_data = f"channel_{channel['id']}_{channel['name']}"
             markup.add(InlineKeyboardButton(button_text, callback_data=callback_data))
         markup.add(InlineKeyboardButton("Back to Menu", callback_data="back_to_menu"))
         if callback_query.message.reply_markup:
