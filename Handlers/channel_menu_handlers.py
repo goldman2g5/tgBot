@@ -1,6 +1,7 @@
 import datetime
 import json
 
+import aiohttp
 import requests
 from aiogram import types
 from aiogram.dispatcher import FSMContext
@@ -58,7 +59,6 @@ async def customization_handler(callback_query: types.CallbackQuery):
         text=f"ИМЯ КАНАЛА СЮДА ВСТАВЬ ДОЛБАЕБ КАК НИЬБУДЬ СУКА customization options:",
         reply_markup=markup
     )
-
 
 @dp.callback_query_handler(lambda c: c.data.startswith("tags_"))
 async def tags_handler(callback_query: types.CallbackQuery, state: FSMContext):

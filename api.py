@@ -56,9 +56,6 @@ async def save_channel_access(user_id, channel_id):
 def get_user_channels(user_id: int) -> List[dict]:
     api_url = f"{API_URL}/Channel/ByUser/{user_id}"
     response = requests.get(api_url)
-    print(response.status_code)
-    print(response.text)
-    print(user_id)
     if response.status_code == 200:
         return response.json()
     else:
@@ -161,19 +158,6 @@ async def get_tags():
     else:
         tags = {}
     return tags
-
-
-async def update_channel_tags(channel_id: int, tags: str):
-    api_url = f"{API_URL}/Channel/UpdateTags/{channel_id}"
-    data = {"tags": tags}
-
-    try:
-        response = requests.put(api_url, json=data)
-        response.raise_for_status()  # Raise an exception for 4xx or 5xx status codes
-        # Optionally, you can handle the response here if needed
-    except requests.exceptions.RequestException as e:
-        # Handle any exceptions that occurred during the request
-        print(f"An error occurred while updating channel tags: {e}")
 
 
 def save_tags(channel_id: int, tags: dict):
