@@ -1,3 +1,4 @@
+import json
 from typing import List
 import aiohttp
 import requests
@@ -173,3 +174,20 @@ async def update_channel_tags(channel_id: int, tags: str):
     except requests.exceptions.RequestException as e:
         # Handle any exceptions that occurred during the request
         print(f"An error occurred while updating channel tags: {e}")
+
+
+def save_tags(channel_id: int, tags: dict):
+    # Convert tags to a string
+    selected_tags = [tag for tag, selected in tags.items() if selected]
+    tags_string = ", ".join(selected_tags)
+
+    # Make a PUT request to the API
+    api_url = f"{API_URL}/Channel/UpdateTags/{channel_id}"
+    headers = {"Content-Type": "application/json"}  # Set the Content-Type header
+    payload = json.dumps(tags_string)  # Convert tags_string to JSON
+    response = requests.put(api_url, data=payload, headers=headers)
+    # Check the response status code
+    if response.status_code == 204:
+        print("Tags successfully sent to the API")
+    else:
+        print("Failed to send tags to the API")

@@ -1,10 +1,11 @@
 import datetime
+import json
 
 import requests
 from aiogram import types
 from aiogram.dispatcher import FSMContext
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-from api import get_notification_status, toggle_notification_status, bump_channel, get_tags
+from api import get_notification_status, toggle_notification_status, bump_channel, get_tags, save_tags
 from bot import dp, bot
 from misc import open_menu, create_notifications_menu
 
@@ -59,7 +60,6 @@ async def customization_handler(callback_query: types.CallbackQuery):
     )
 
 
-
 @dp.callback_query_handler(lambda c: c.data.startswith("tags_"))
 async def tags_handler(callback_query: types.CallbackQuery, state: FSMContext):
     channel_id = int(callback_query.data.split("_")[1])
@@ -92,7 +92,7 @@ async def tags_handler(callback_query: types.CallbackQuery, state: FSMContext):
         callback_data = f"tags_{channel_id}_toggle_{tag}"
         markup.add(InlineKeyboardButton(button_text, callback_data=callback_data))
 
-    markup.add(InlineKeyboardButton("Save", callback_data=f"save_customization_{channel_id}"))
+    markup.add(InlineKeyboardButton("Save", callback_data=f"save_tags_{channel_id}"))
     markup.add(InlineKeyboardButton("Back", callback_data=f"customization_{channel_id}"))
 
     # Send a message with available tags
@@ -103,26 +103,30 @@ async def tags_handler(callback_query: types.CallbackQuery, state: FSMContext):
         reply_markup=markup
     )
 
-@dp.callback_query_handler(lambda c: c.data.startswith("save_customization_"))
-async def save_customization_handler(callback_query: types.CallbackQuery, state: FSMContext):
+
+@dp.callback_query_handler(lambda c: c.data.startswith("save_tags_"))
+async def save_tags_handler(callback_query: types.CallbackQuery, state: FSMContext):
     channel_id = int(callback_query.data.split("_")[2])
+
+    async with state.proxy() as data:
+        tags = data.get("tags")
+        if tags is None:
+            tags = await get_tags()
+            data["tags"] = tags
 
     # Retrieve the current tags dictionary from the state
     async with state.proxy() as data:
         tags = data.get("tags", {})
 
+    # Send the tags to the API
+    save_tags(channel_id, tags)
+
     # Extract the selected tags as a comma-separated string
     selected_tags = [tag for tag, selected in tags.items() if selected]
     tags_string = ", ".join(selected_tags)
 
-    # Print the tags string to the console
-    print("Selected tags:", tags_string)
-
     # Send a message indicating that the customization is saved
-    await bot.send_message(
-        chat_id=callback_query.message.chat.id,
-        text=f"Customization saved with tags: {tags_string}"
-    )
+    await callback_query.answer(f"Customization saved with tags: {tags_string}")
 
 
 # Handler for notifications button
