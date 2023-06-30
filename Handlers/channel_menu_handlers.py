@@ -103,6 +103,27 @@ async def tags_handler(callback_query: types.CallbackQuery, state: FSMContext):
         reply_markup=markup
     )
 
+@dp.callback_query_handler(lambda c: c.data.startswith("save_customization_"))
+async def save_customization_handler(callback_query: types.CallbackQuery, state: FSMContext):
+    channel_id = int(callback_query.data.split("_")[2])
+
+    # Retrieve the current tags dictionary from the state
+    async with state.proxy() as data:
+        tags = data.get("tags", {})
+
+    # Extract the selected tags as a comma-separated string
+    selected_tags = [tag for tag, selected in tags.items() if selected]
+    tags_string = ", ".join(selected_tags)
+
+    # Print the tags string to the console
+    print("Selected tags:", tags_string)
+
+    # Send a message indicating that the customization is saved
+    await bot.send_message(
+        chat_id=callback_query.message.chat.id,
+        text=f"Customization saved with tags: {tags_string}"
+    )
+
 
 # Handler for notifications button
 @dp.callback_query_handler(lambda c: c.data.startswith("notifications_"))
