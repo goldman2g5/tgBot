@@ -57,7 +57,7 @@ async def customization_handler(callback_query: types.CallbackQuery):
     await bot.edit_message_text(
         chat_id=callback_query.message.chat.id,
         message_id=callback_query.message.message_id,
-        text=f"{channel_name} customization options:",
+        text=f"customization options: {channel_name}",
         reply_markup=markup
     )
 
@@ -159,6 +159,7 @@ async def process_notifications_button(callback_query: types.CallbackQuery):
 @dp.callback_query_handler(lambda c: c.data.startswith("toggle_notifications_"))
 async def process_toggle_notifications_button(callback_query: types.CallbackQuery):
     channel_id = int(callback_query.data.split("_")[2])
+    channel_name = callback_query.data.split("_")[3]
 
     notifications_enabled = get_notification_status(channel_id)
 
@@ -177,7 +178,7 @@ async def process_toggle_notifications_button(callback_query: types.CallbackQuer
         return
 
     # Create inline buttons for notifications menu
-    markup = create_notifications_menu(channel_id, new_notifications_enabled)
+    markup = create_notifications_menu(channel_id, channel_name, new_notifications_enabled)
 
     # Edit the existing message with the updated notification status and toggle button
     await bot.edit_message_text(
