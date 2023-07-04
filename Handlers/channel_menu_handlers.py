@@ -6,7 +6,7 @@ import requests
 from aiogram import types
 from aiogram.dispatcher import FSMContext
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-from api import get_notification_status, toggle_notification_status, bump_channel, get_tags, save_tags
+from api import get_notification_status, toggle_notification_status, bump_channel, get_tags, save_tags, get_channel_tags
 from bot import dp, bot
 from misc import open_menu, create_notifications_menu
 
@@ -69,10 +69,8 @@ async def tags_handler(callback_query: types.CallbackQuery, state: FSMContext):
 
     # Retrieve the current tags dictionary from the state, or initialize it if it doesn't exist
     async with state.proxy() as data:
-        tags = data.get("tags")
-        if tags is None:
-            tags = await get_tags()
-            data["tags"] = tags
+        tags = await get_channel_tags(channel_id)  # Use get_channel_tags instead of get_tags
+        data["tags"] = tags
 
     # Extract the tag and action from the callback data
     callback_arguments = callback_query.data.split("_")

@@ -160,15 +160,34 @@ async def get_tags():
     return tags
 
 
+async def get_channel_tags(channel_id: int):
+    # Get all tags from the API
+    response = requests.get(f"{API_URL}/Tags")
+    if response.status_code == 200:
+        tags_str = response.text.strip()
+        tags = {tag: False for tag in tags_str.split(",")}
+    else:
+        tags = {}
+
+    # Get the channel's tags from the API
+    response = requests.get(f"{API_URL}/Channel/{channel_id}/Tags")
+    if response.status_code == 200:
+        channel_tags = response.json()
+        for tag in channel_tags:
+            if tag in tags:
+                tags[tag] = True
+
+    return tags
+
+
 def save_tags(channel_id: int, tags: dict):
-    # Convert tags to a string
+    # Convert tags to a list of selected tags
     selected_tags = [tag for tag, selected in tags.items() if selected]
-    tags_string = ", ".join(selected_tags)
 
     # Make a PUT request to the API
-    api_url = f"{API_URL}/Channel/UpdateTags/{channel_id}"
+    api_url = f"{API_URL}/Channel/{channel_id}/Tags"
     headers = {"Content-Type": "application/json"}  # Set the Content-Type header
-    payload = json.dumps(tags_string)  # Convert tags_string to JSON
+    payload = json.dumps(selected_tags)  # Convert selected_tags to JSON
     response = requests.put(api_url, data=payload, headers=headers)
     # Check the response status code
     if response.status_code == 204:
