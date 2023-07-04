@@ -1,9 +1,17 @@
 import json
+import logging
 from typing import List
 import aiohttp
 import requests
 
 API_URL = "http://localhost:8053/api"
+
+# Configure logging settings
+logging.basicConfig(level=logging.INFO, filename="logs.log", filemode="w",
+                    format='%(asctime)s - %(levelname)s - %(message)s')
+
+# Define a logger object specific to the module
+logger = logging.getLogger(__name__)
 
 
 # Function to save user info in the database
@@ -13,6 +21,8 @@ def save_user_info(user_id, chat_id):
         "ChatId": chat_id
     }
     response = requests.post(f"{API_URL}/User", json=user)
+    if response.status_code != 201:
+        logger.critical(f"Failed to save user info\nTelegramId: {user_id}\nChatId: {chat_id}\n{response.text}")
 
 
 async def save_channel_information(channel_name: str, channel_description: str, members_count: int, avatar_base64: str,
@@ -34,6 +44,8 @@ async def save_channel_information(channel_name: str, channel_description: str, 
     if response.status_code == 201:
         return response.json().get("id")
     else:
+        logger.critical(
+            f"Failed to save channel info\nchannel_name - {channel_name}\nServer Response - {response.text}")
         return 0
 
 
@@ -49,6 +61,8 @@ async def save_channel_access(user_id, channel_id):
     if response.status_code == 201:
         return True
     else:
+        logger.critical(
+            f"Failed to save access info\nuser_id - {user_id}\nchannel_id - {channel_id}\nServer Response - {response.text}")
         return False
 
 
@@ -194,3 +208,28 @@ def save_tags(channel_id: int, tags: dict):
         print("Tags successfully sent to the API")
     else:
         print("Failed to send tags to the API")
+
+
+def get_subscriptions_from_api():
+    response = requests.get(f'{API_URL}/Subscription')
+    if response.status_code == 200:
+        return response.json()
+    else:
+        # Handle error if API request fails
+        logger.critical(f"Failed to get subscription types\n Server response - {response.text}")
+        return None
+
+
+def subscribe_channel(channel_id, subtype_id):
+    try:
+        url = f"{API_URL}/Channel/Subscribe/{channel_id}?subtypeId={subtype_id}"
+        response = requests.post(url)
+
+        if response.status_code == 200:
+            return True, "Successfully subscribed the channel!"
+        else:
+            logger.critical(f"Failed to subscribe the channel.\n Server response - {response}")
+            return False, "Failed to subscribe the channel. Please try again later."
+    except requests.exceptions.RequestException:
+        logger.critical(f"Failed to connect to the subscription service.\nServer response - {response}")
+        return False, "Failed to connect to the subscription service. Please try again later."
