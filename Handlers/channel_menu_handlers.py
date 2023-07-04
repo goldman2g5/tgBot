@@ -68,11 +68,15 @@ async def tags_handler(callback_query: types.CallbackQuery, state: FSMContext):
     channel_id = int(callback_query.data.split("_")[1])
     channel_name = callback_query.data.split("_")[2]
 
+
+    # Вот эту функцию поменять местами
     # Retrieve the current tags dictionary from the state, or initialize it if it doesn't exist
     async with state.proxy() as data:
         tags = await get_channel_tags(channel_id)  # Use get_channel_tags instead of get_tags
         data["tags"] = tags
 
+    # С вот этой
+    # Либо вообще хендлер отдельный вьебать
     # Extract the tag and action from the callback data
     callback_arguments = callback_query.data.split("_")
     if len(callback_arguments) > 3:
