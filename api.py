@@ -13,7 +13,6 @@ logging.basicConfig(level=logging.INFO, filename="logs.log", filemode="w",
 # Define a logger object specific to the module
 logger = logging.getLogger(__name__)
 
-
 # Function to save user info in the database
 def save_user_info(user_id, chat_id):
     user = {

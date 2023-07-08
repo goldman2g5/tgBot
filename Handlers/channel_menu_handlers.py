@@ -12,6 +12,7 @@ from bot import dp, bot
 from misc import open_menu, create_notifications_menu
 
 
+
 @dp.callback_query_handler(lambda c: c.data.startswith("channel_"))
 async def channel_menu_handler(callback_query: types.CallbackQuery):
     channel_id = int(callback_query.data.split("_")[1])
@@ -238,7 +239,6 @@ async def process_subscription_choice(callback_query: types.CallbackQuery):
     channel_id = int(choice_data[1])
     channel_name = choice_data[2]
     subscription_type = choice_data[3]
-    await bot.delete_message(callback_query.from_user.id, callback_query.message.message_id)
 
     # Retrieve subscription data from the API
     subscriptions = get_subscriptions_from_api()
