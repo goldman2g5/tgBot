@@ -1,3 +1,4 @@
+import asyncio
 import datetime
 import json
 
@@ -10,7 +11,6 @@ from api import get_notification_status, toggle_notification_status, bump_channe
     get_channel_tags, get_subscriptions_from_api, subscribe_channel
 from bot import dp, bot
 from misc import open_menu, create_notifications_menu
-
 
 
 @dp.callback_query_handler(lambda c: c.data.startswith("channel_"))
@@ -68,7 +68,6 @@ async def customization_handler(callback_query: types.CallbackQuery):
 async def tags_handler(callback_query: types.CallbackQuery, state: FSMContext):
     channel_id = int(callback_query.data.split("_")[1])
     channel_name = callback_query.data.split("_")[2]
-
 
     # Вот эту функцию поменять местами
     # Retrieve the current tags dictionary from the state, or initialize it if it doesn't exist
@@ -330,3 +329,9 @@ async def process_bump_button(callback_query: types.CallbackQuery):
             await callback_query.answer("Failed to bump the channel.")
     else:
         await callback_query.answer("An error occurred while attempting to bump the channel.")
+
+    # Check if the callback data contains "delete" keyword
+    if "delete" in callback_query.data:
+        # Wait for 30 seconds before deleting the message
+        await asyncio.sleep(10)
+        await bot.delete_message(callback_query.message.chat.id, callback_query.message.message_id)
