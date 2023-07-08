@@ -13,6 +13,7 @@ logging.basicConfig(level=logging.INFO, filename="logs.log", filemode="w",
 # Define a logger object specific to the module
 logger = logging.getLogger(__name__)
 
+
 # Function to save user info in the database
 def save_user_info(user_id, chat_id):
     user = {
@@ -21,7 +22,7 @@ def save_user_info(user_id, chat_id):
     }
     response = requests.post(f"{API_URL}/User", json=user)
     if response.status_code != 201:
-        logger.critical(f"Failed to save user info\nTelegramId: {user_id}\nChatId: {chat_id}\n{response.text}")
+        logger.critical(f"Failed to save user info\nTelegramId: {user_id}\nChatId: {chat_id}\n{response}")
 
 
 async def save_channel_information(channel_name: str, channel_description: str, members_count: int, avatar_base64: str,
@@ -143,7 +144,7 @@ async def get_channel_id_from_database(channel_id: int):
             else:
                 return None
         else:
-            print(f"Error retrieving channel ID from the database. Status code: {response.text}")
+            logger.critical(f"Error retrieving channel ID from the database. Status code: {response}")
             return None
     except Exception as e:
         print(f"Error retrieving channel ID from the database: {e}")

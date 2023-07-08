@@ -71,9 +71,6 @@ async def tags_handler(callback_query: types.CallbackQuery, state: FSMContext):
 
     # Вот эту функцию поменять местами
     # Retrieve the current tags dictionary from the state, or initialize it if it doesn't exist
-    async with state.proxy() as data:
-        tags = await get_channel_tags(channel_id)  # Use get_channel_tags instead of get_tags
-        data["tags"] = tags
 
     # С вот этой
     # Либо вообще хендлер отдельный вьебать
@@ -84,7 +81,13 @@ async def tags_handler(callback_query: types.CallbackQuery, state: FSMContext):
         tag = callback_query.data.split("_")[4]
         # Update the status of the clicked tag
         if action == "toggle":
-            tags[tag] = not tags[tag]
+            async with state.proxy() as data:
+                tags = data["tags"]
+                tags[tag] = not tags[tag]
+    else:
+        async with state.proxy() as data:
+            tags = await get_channel_tags(channel_id)
+            data["tags"] = tags
 
     # Update the state with the modified tags dictionary
     async with state.proxy() as data:
@@ -132,6 +135,10 @@ async def save_tags_handler(callback_query: types.CallbackQuery, state: FSMConte
 
     # Send a message indicating that the customization is saved
     await callback_query.answer(f"Customization saved with tags: {tags_string}")
+
+    # Clear tags dict
+    async with state.proxy() as data:
+        data["tags"] = None
 
 
 # Handler for notifications button
