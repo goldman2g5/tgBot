@@ -44,9 +44,10 @@ async def back_to_menu_handler(callback_query: types.CallbackQuery):
 async def add_channel_handler(callback_query: types.CallbackQuery):
     # Set the state
     await AddChannelStates.waiting_for_channel_name.set()
-    message = await callback_query.message.answer("Please enter the channel name:")
-    print(message.message_id)
-
+    message = await callback_query.message.answer("Please enter the channel name:",
+                                                  reply_markup=InlineKeyboardMarkup(row_width=1)
+                                                              .add(InlineKeyboardButton("Cancel",
+                                                                                        callback_data="cancel_enter_channel_name")))
     await dp.current_state().update_data(channel_name_message_id=message.message_id)
 
 

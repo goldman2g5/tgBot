@@ -34,6 +34,29 @@ async def delete_messages(bot, chat_id, message_ids):
             print(f"Error deleting message {msg_id}: {e}")
 
 
+async def cancel_add_channel(callback_query: types.CallbackQuery, state: FSMContext):
+    data = await state.get_data()
+    await delete_messages(bot, callback_query.message.chat.id, data.get("message_ids", []))
+    await state.finish()
+    await callback_query.answer("Adding channel cancelled.")
+    await bot.delete_message(callback_query.message.chat.id, callback_query.message.message_id)
+
+
+@dp.callback_query_handler(state=AddChannelStates.waiting_for_check, text="cancel_add_channel")
+async def cancel_add_channel_handler(callback_query: types.CallbackQuery, state: FSMContext):
+    await cancel_add_channel(callback_query, state)
+
+
+@dp.callback_query_handler(state=AddChannelStates.waiting_for_channel_description, text="cancel_enter_description")
+async def cancel_enter_description_handler(callback_query: types.CallbackQuery, state: FSMContext):
+    await cancel_add_channel(callback_query, state)
+
+
+@dp.callback_query_handler(state=AddChannelStates.waiting_for_channel_name, text="cancel_enter_channel_name")
+async def cancel_enter_channel_name_handler(callback_query: types.CallbackQuery, state: FSMContext):
+    await cancel_add_channel(callback_query, state)
+
+
 @dp.message_handler(state=AddChannelStates.waiting_for_channel_name)
 async def process_channel_name(message: types.Message, state: FSMContext):
     data = await state.get_data()
@@ -61,8 +84,9 @@ async def process_channel_name(message: types.Message, state: FSMContext):
     # Create the "Add Bot" button and send the message
     markup = InlineKeyboardMarkup(row_width=1)
     markup.add(InlineKeyboardButton("Check", callback_data="add_bot"))
-    await message.answer("To add a channel for monitoring, "
-                         "you need to add the bot to the channel.", reply_markup=markup)
+    markup.add(InlineKeyboardButton("Cancel", callback_data="cancel_add_channel"))  # Add cancel button
+    await message.answer("To add a channel for monitoring, you need to add the bot to the channel.",
+                         reply_markup=markup)
 
     await update_message_ids(state, message.message_id)
 
@@ -88,7 +112,11 @@ async def process_add_bot(callback_query: types.CallbackQuery, state: FSMContext
                 await state.update_data(channel_name=channel_name, user_id=user.id, channel_id=channel_id)
                 await callback_query.answer("Success! Bot added to the channel.")
 
-                sent_message = await callback_query.message.answer("Please enter the channel description:")
+                sent_message = await callback_query.message.answer("Please enter the channel description:",
+                                                                   reply_markup=InlineKeyboardMarkup(row_width=1)
+                                                                   .add(InlineKeyboardButton("Cancel",
+                                                                                             callback_data="cancel_enter_description")))
+
                 await update_message_ids(state, callback_query.message.message_id)
                 await update_message_ids(state, sent_message.message_id)
 
