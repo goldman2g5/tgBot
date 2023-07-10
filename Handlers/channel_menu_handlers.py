@@ -119,7 +119,7 @@ async def save_tags_handler(callback_query: types.CallbackQuery, state: FSMConte
     async with state.proxy() as data:
         tags = data.get("tags")
         if tags is None:
-            tags = await get_tags()
+            tags = await get_channel_tags(channel_id)
             data["tags"] = tags
 
     # Retrieve the current tags dictionary from the state
@@ -136,9 +136,9 @@ async def save_tags_handler(callback_query: types.CallbackQuery, state: FSMConte
     # Send a message indicating that the customization is saved
     await callback_query.answer(f"Customization saved with tags: {tags_string}")
 
-    # Clear tags dict
+    # update tags dict
     async with state.proxy() as data:
-        data["tags"] = None
+        data["tags"] = await get_channel_tags(channel_id)
 
 
 # Handler for notifications button
