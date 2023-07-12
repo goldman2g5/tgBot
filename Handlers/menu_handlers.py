@@ -1,3 +1,7 @@
+import urllib
+from urllib import parse
+from urllib.parse import parse_qs
+
 from aiogram import types
 from aiogram.dispatcher.filters import Command, state
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
@@ -7,12 +11,48 @@ from misc import open_menu
 from states import AddChannelStates
 
 
+def send_message(connection_id, message, username, user_id):
+    url = "http://localhost:8053/api/Message"  # Replace with the actual URL of your API
+
+    payload = {
+        "token": message,
+        "username": username,
+        "userId": user_id
+    }
+
+    params = {
+        "connectionId": connection_id
+    }
+
+    response = requests.post(url, json=payload, params=params)
+
+    if response.status_code == 200:
+        print("Message sent successfully")
+    else:
+        print("Failed to send message")
+        print(response.text)
+
+
 # Handler for the /start command
 @dp.message_handler(Command("start"))
 async def cmd_start(message: types.Message):
-    # Write user info to the database
-    save_user_info(message.from_user.id, message.chat.id)
+    username = message.from_user.username
+    user_id = message.from_user.id
 
+    args = message.get_args()
+
+    print(args)
+    if args:
+        decoded_args = args.split("KakRazdelitHuetu")
+        connection_id = decoded_args[0]
+        token = decoded_args[1]
+
+        print(token)
+        print(connection_id)
+        send_message(connection_id, token, username, user_id)
+
+    # Write user info to the database
+    save_user_info(user_id, message.chat.id)
     # Open the menu
     markup = InlineKeyboardMarkup(row_width=1)
     markup.add(InlineKeyboardButton("Add Channel", callback_data="add_channel"),
@@ -46,8 +86,8 @@ async def add_channel_handler(callback_query: types.CallbackQuery):
     await AddChannelStates.waiting_for_channel_name.set()
     message = await callback_query.message.answer("Please enter the channel name:",
                                                   reply_markup=InlineKeyboardMarkup(row_width=1)
-                                                              .add(InlineKeyboardButton("Cancel",
-                                                                                        callback_data="cancel_enter_channel_name")))
+                                                  .add(InlineKeyboardButton("Cancel",
+                                                                            callback_data="cancel_enter_channel_name")))
     await dp.current_state().update_data(channel_name_message_id=message.message_id)
 
 
