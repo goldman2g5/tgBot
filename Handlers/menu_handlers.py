@@ -11,11 +11,10 @@ from misc import open_menu
 from states import AddChannelStates
 
 
-def send_message(connection_id, message, username, user_id):
+def send_message(connection_id, username, user_id):
     url = "http://localhost:8053/api/Message"  # Replace with the actual URL of your API
 
     payload = {
-        "token": message,
         "username": username,
         "userId": user_id
     }
@@ -41,15 +40,10 @@ async def cmd_start(message: types.Message):
 
     args = message.get_args()
 
-    print(args)
     if args:
-        decoded_args = args.split("KakRazdelitHuetu")
-        connection_id = decoded_args[0]
-        token = decoded_args[1]
-
-        print(token)
+        connection_id = args
         print(connection_id)
-        send_message(connection_id, token, username, user_id)
+        send_message(connection_id, username, user_id)
 
     # Write user info to the database
     save_user_info(user_id, message.chat.id)
