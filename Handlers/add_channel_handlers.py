@@ -1,5 +1,7 @@
 import base64
 import io
+import re
+
 from aiogram import types
 from aiogram.dispatcher import FSMContext
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
@@ -61,7 +63,16 @@ async def cancel_enter_channel_name_handler(callback_query: types.CallbackQuery,
 async def process_channel_name(message: types.Message, state: FSMContext):
     data = await state.get_data()
     channel_name_message_id = data.get("channel_name_message_id")
-    channel_name = "@" + message.text
+    channel_name_input = message.text.strip()
+
+    # Regular expression pattern to match the different formats of channel names
+    channel_name_pattern = r"(?:https?://t\.me/|@)?(.+)"
+    match = re.match(channel_name_pattern, channel_name_input)
+    if match:
+        channel_name = "@" + match.group(1)
+    else:
+        await message.answer("Error: Invalid channel name format.")
+        return
 
     # Save the channel name in the context
     await state.update_data(channel_name=channel_name)
