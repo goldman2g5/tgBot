@@ -233,3 +233,27 @@ def subscribe_channel(channel_id, subtype_id):
     except requests.exceptions.RequestException:
         logger.critical(f"Failed to connect to the subscription service.\nServer response - {response}")
         return False, "Failed to connect to the subscription service. Please try again later."
+
+
+# Retrieve the current promo post status from the API
+def get_promo_post_status(channel_id):
+    api_url = f"{API_URL}/Channel/{channel_id}"
+    response = requests.get(api_url)
+    if response.status_code == 404:
+        return None  # Channel not found
+
+    channel_data = response.json()
+    promo_post_enabled = channel_data.get("promoPost")
+
+    if promo_post_enabled is None:
+        promo_post_enabled = False  # Assume promo post is disabled if the value is null
+
+    return promo_post_enabled
+
+
+# Update the promo post status in the API
+def toggle_promo_post_status(channel_id, new_promo_post_enabled):
+    api_url = f"{API_URL}/Channel/TogglePromoPost/{channel_id}"
+    put_data = {"notifications": new_promo_post_enabled}
+    response = requests.put(api_url, put_data)
+    return response.status_code == 204  # Return True if the API update was successful

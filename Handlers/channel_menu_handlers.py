@@ -8,7 +8,7 @@ from aiogram import types
 from aiogram.dispatcher import FSMContext
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ContentType
 from api import get_notification_status, toggle_notification_status, bump_channel, get_tags, save_tags, \
-    get_channel_tags, get_subscriptions_from_api, subscribe_channel
+    get_channel_tags, get_subscriptions_from_api, subscribe_channel, get_promo_post_status, toggle_promo_post_status
 from bot import dp, bot
 from misc import open_menu, create_notifications_menu
 
@@ -50,6 +50,7 @@ async def customization_handler(callback_query: types.CallbackQuery):
     markup = InlineKeyboardMarkup(row_width=1)
     markup.add(
         InlineKeyboardButton("Tags", callback_data=f"tags_{channel_id}_{channel_name}"),
+        InlineKeyboardButton("Additional Promotion", callback_data=f"promotion_{channel_id}_{channel_name}"),
         InlineKeyboardButton("Description", callback_data=f"description_{channel_id}"),
         InlineKeyboardButton("Update Data", callback_data=f"update_data_{channel_id}"),
         InlineKeyboardButton("Back to Menu", callback_data=f"channel_{channel_id}_{channel_name}")
@@ -62,6 +63,70 @@ async def customization_handler(callback_query: types.CallbackQuery):
         text=f"customization options: {channel_name}",
         reply_markup=markup
     )
+
+
+@dp.callback_query_handler(lambda c: c.data.startswith("promotion_"))
+async def promotion_submenu_handler(callback_query: types.CallbackQuery):
+    channel_id = int(callback_query.data.split("_")[1])
+    channel_name = callback_query.data.split("_")[2]
+
+    promo_post_status = get_promo_post_status(channel_id);
+
+    promotion_submenu_markup = create_promo_post_menu(channel_id, channel_name, promo_post_status)
+
+    # Edit a message with the promotion submenu options
+    await bot.edit_message_text(
+        chat_id=callback_query.message.chat.id,
+        message_id=callback_query.message.message_id,
+        text=f"PromoPost is {'on' if promo_post_status else 'off'}:",
+        reply_markup=promotion_submenu_markup
+    )
+
+
+# Handler for the "Enable/Disable Promo Post" button
+@dp.callback_query_handler(lambda c: c.data.startswith("togglepromopost_"))
+async def process_toggle_promo_post_button(callback_query: types.CallbackQuery):
+    channel_id = int(callback_query.data.split("_")[1])
+    channel_name = callback_query.data.split("_")[2]
+
+    promo_post_enabled = get_promo_post_status(channel_id)
+
+    if promo_post_enabled is None:
+        await callback_query.message.answer("Channel not found.")
+        return
+
+    # Toggle the promo post status
+    new_promo_post_enabled = not promo_post_enabled
+
+    # Update the promo post status in the API
+    success = toggle_promo_post_status(channel_id, new_promo_post_enabled)
+
+    if not success:
+        await callback_query.message.answer("Failed to toggle promo post.")
+        return
+
+    # Create inline buttons for promo post menu
+    markup = create_promo_post_menu(channel_id, channel_name, new_promo_post_enabled)
+
+    # Edit the existing message with the updated promo post status and toggle button
+    await bot.edit_message_text(
+        chat_id=callback_query.message.chat.id,
+        message_id=callback_query.message.message_id,
+        text=f"PromoPost is {'on' if new_promo_post_enabled else 'off'}",
+        reply_markup=markup
+    )
+
+
+# Common function to create inline buttons for the promo post menu
+def create_promo_post_menu(channel_id, channel_name, promo_post_enabled):
+    markup = InlineKeyboardMarkup(row_width=1)
+    toggle_text = "Disable" if promo_post_enabled else "Enable"
+    toggle_callback_data = f"togglepromopost_{channel_id}_{channel_name}"
+    markup.add(
+        InlineKeyboardButton(f"{toggle_text} Promo Post", callback_data=toggle_callback_data),
+        InlineKeyboardButton("Back to Customization Menu", callback_data=f"customization_{channel_id}_{channel_name}")
+    )
+    return markup
 
 
 @dp.callback_query_handler(lambda c: c.data.startswith("tags_"))
