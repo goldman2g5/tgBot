@@ -27,31 +27,43 @@ async def send_sub_notification(notification):
     telegram_chat_id = notification['telegramChatId']
     channel_id = notification['channelId']
 
-    await bot.send_message(telegram_chat_id, f"Your subsciption for {channel_name} has expired!")
+    await bot.send_message(telegram_chat_id, f"Your subscription for {channel_name} has expired!")
+
+
+async def send_promo_post_notification(notification):
+    channel_telegram_id = notification['channelTelegramId']
+    channel_id = notification['channelId']
+
+    # Send the notification to the user using the bot
+    markup = types.InlineKeyboardMarkup(row_width=1)
+    markup.add(
+        types.InlineKeyboardButton("Promo", callback_data=f"promo_{channel_id}_delete"),
+    )
+    await bot.send_message(channel_telegram_id, "It's time for a promotional post!", reply_markup=markup)
 
 
 async def fetch_notifications():
     try:
-        # Fetch notifications from the API
+        # Fetch bump notifications from the API
         response = requests.get('http://localhost:8053/api/Notification')
-        response.raise_for_status()  # Raise an exception for non-2xx responses
-
+        response.raise_for_status()
         bump_notifications = response.json()
-
-        # Process each notification
         for notification in bump_notifications:
             await send_bump_notification(notification)
 
+        # Fetch subscription notifications from the API
         response = requests.get('http://localhost:8053/api/Subscription/CheckExpiredSubscriptions')
-        response.raise_for_status()  # Raise an exception for non-2xx responses
-
+        response.raise_for_status()
         sub_notifications = response.json()
-
-        # Process each notification
         for notification in sub_notifications:
             await send_sub_notification(notification)
 
-
+        # Fetch promo posts from the API
+        response = requests.get('http://localhost:8053/api/Notification/GetPromoPosts')  # Replace with your endpoint
+        response.raise_for_status()
+        promo_notifications = response.json()
+        for notification in promo_notifications:
+            await send_promo_post_notification(notification)
 
     except requests.RequestException as e:
         # Log the error
