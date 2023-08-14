@@ -1,6 +1,7 @@
 import asyncio
 import datetime
 import json
+import logging
 
 import aiohttp
 import requests
@@ -43,9 +44,11 @@ async def channel_menu_handler(callback_query: types.CallbackQuery):
 
 
 @dp.callback_query_handler(lambda c: c.data.startswith("customization_"))
-async def customization_handler(callback_query: types.CallbackQuery):
+async def customization_handler(callback_query: types.CallbackQuery, state: FSMContext):
     channel_id = int(callback_query.data.split("_")[1])
     channel_name = callback_query.data.split("_")[2]
+
+    await state.finish()
 
     # Create inline buttons for customization options
     markup = InlineKeyboardMarkup(row_width=1)
@@ -73,7 +76,10 @@ async def promotion_submenu_handler(callback_query: types.CallbackQuery, state: 
 
     promo_post_status = get_promo_post_status(channel_id)
 
-    promotion_submenu_markup = await create_promo_post_menu(channel_id, channel_name, promo_post_status, state)
+    async with state.proxy() as data:
+        data['promo_post_status'] = promo_post_status
+
+    promotion_submenu_markup = await create_promo_post_menu(channel_id, channel_name, state)
 
     # Edit a message with the promotion submenu options
     await bot.edit_message_text(
@@ -102,12 +108,15 @@ async def process_toggle_promo_post_button(callback_query: types.CallbackQuery, 
     # Update the promo post status in the API
     success = toggle_promo_post_status(channel_id, new_promo_post_enabled)
 
+    async with state.proxy() as data:
+        data['promo_post_status'] = new_promo_post_enabled
+
     if not success:
         await callback_query.message.answer("Failed to toggle promo post.")
         return
 
     # Create inline buttons for promo post menu
-    markup = await create_promo_post_menu(channel_id, channel_name, new_promo_post_enabled, state)
+    markup = await create_promo_post_menu(channel_id, channel_name, state)
 
     # Edit the existing message with the updated promo post status and toggle button
     await bot.edit_message_text(
@@ -127,39 +136,20 @@ def getChannelById(channel_id):
         return None
 
 
-def updateChannelDetails(channel_id, promo_post_time, promo_post_interval):
-    try:
-        payload = {
-            'PromoPostTime': promo_post_time,
-            'PromoPostInterval': promo_post_interval
-        }
+async def create_promo_post_menu(channel_id, channel_name, state: FSMContext):
+    async with state.proxy() as data:
+        promo_post_enabled = data['promo_post_status']
 
-        response = requests.put(
-            f"http://localhost:8053/api/Channel/UpdatePromoPostDetails/{channel_id}",
-            json=payload
-        )
-
-        response.raise_for_status()
-
-        if response.status_code == 200:
-            return True
-        else:
-            return False
-    except requests.RequestException:
-        return False
-
-
-async def create_promo_post_menu(channel_id, channel_name, promo_post_enabled, state: FSMContext):
     async with state.proxy() as data:
         # Check if promo_post_time is in state or fetch from API
         if 'promo_post_time' not in data:
             channel_data = getChannelById(channel_id)
-            data['promo_post_time'] = channel_data.get('promoPostTime', '10:00:00')
+            data['promo_post_time'] = channel_data.get('promoPostTime') or '10:00:00'
 
         # Check if promo_post_interval is in state or fetch from API
         if 'promo_post_interval' not in data:
             channel_data = channel_data if 'channel_data' in locals() else getChannelById(channel_id)
-            data['promo_post_interval'] = channel_data.get('promoPostInterval', 7)
+            data['promo_post_interval'] = channel_data.get('promoPostInterval') or 7
 
         current_time = data['promo_post_time']
         current_interval = data['promo_post_interval']
@@ -202,7 +192,7 @@ async def handle_decrease_time(callback_query: types.CallbackQuery, state: FSMCo
         new_time_obj = (datetime.combine(datetime.today(), time_obj) - timedelta(minutes=30)).time()
         data['promo_post_time'] = new_time_obj.strftime('%H:%M:%S')
 
-    new_menu = await create_promo_post_menu(channel_id, channel_name, True, state)
+    new_menu = await create_promo_post_menu(channel_id, channel_name, state)
     await bot.edit_message_reply_markup(chat_id=callback_query.message.chat.id,
                                         message_id=callback_query.message.message_id,
                                         reply_markup=new_menu)
@@ -216,7 +206,7 @@ async def handle_increase_time(callback_query: types.CallbackQuery, state: FSMCo
         new_time_obj = (datetime.combine(datetime.today(), time_obj) + timedelta(minutes=30)).time()
         data['promo_post_time'] = new_time_obj.strftime('%H:%M:%S')
 
-    new_menu = await create_promo_post_menu(channel_id, channel_name, True, state)
+    new_menu = await create_promo_post_menu(channel_id, channel_name, state)
     await bot.edit_message_reply_markup(chat_id=callback_query.message.chat.id,
                                         message_id=callback_query.message.message_id,
                                         reply_markup=new_menu)
@@ -229,7 +219,7 @@ async def handle_decrease_interval(callback_query: types.CallbackQuery, state: F
         new_interval = max(1, int(current_interval) - 1)
         data['promo_post_interval'] = new_interval
 
-    new_menu = await create_promo_post_menu(channel_id, channel_name, True, state)
+    new_menu = await create_promo_post_menu(channel_id, channel_name, state)
     await bot.edit_message_reply_markup(chat_id=callback_query.message.chat.id,
                                         message_id=callback_query.message.message_id,
                                         reply_markup=new_menu)
@@ -242,11 +232,32 @@ async def handle_increase_interval(callback_query: types.CallbackQuery, state: F
         new_interval = int(current_interval) + 1
         data['promo_post_interval'] = new_interval
 
-    new_menu = await create_promo_post_menu(channel_id, channel_name, True, state)
+    new_menu = await create_promo_post_menu(channel_id, channel_name, state)
     await bot.edit_message_reply_markup(chat_id=callback_query.message.chat.id,
                                         message_id=callback_query.message.message_id,
                                         reply_markup=new_menu)
 
+def updateChannelDetails(channel_id, promo_post_time, promo_post_interval):
+    try:
+        payload = {
+            'PromoPostTime': promo_post_time,
+            'PromoPostInterval': promo_post_interval
+        }
+
+        response = requests.put(
+            f"http://localhost:8053/api/Channel/UpdatePromoPostDetails/{channel_id}",
+            json=payload
+        )
+
+        response.raise_for_status()
+        print(response.status_code)
+        print(response)
+        if response.status_code == 200:
+            return True
+        else:
+            return False
+    except requests.RequestException:
+        return False
 
 @dp.callback_query_handler(lambda c: c.data.startswith('savechanges_'))
 async def handle_save_changes(callback_query: types.CallbackQuery, state: FSMContext):
