@@ -11,6 +11,7 @@ from api import get_notification_status, toggle_notification_status, bump_channe
     get_channel_tags, get_subscriptions_from_api, subscribe_channel, get_promo_post_status, toggle_promo_post_status
 from bot import dp, bot
 from misc import open_menu, create_notifications_menu
+from datetime import datetime, timedelta
 
 
 @dp.callback_query_handler(lambda c: c.data.startswith("channel_"))
@@ -66,13 +67,13 @@ async def customization_handler(callback_query: types.CallbackQuery):
 
 
 @dp.callback_query_handler(lambda c: c.data.startswith("promotion_"))
-async def promotion_submenu_handler(callback_query: types.CallbackQuery):
+async def promotion_submenu_handler(callback_query: types.CallbackQuery, state: FSMContext):
     channel_id = int(callback_query.data.split("_")[1])
     channel_name = callback_query.data.split("_")[2]
 
-    promo_post_status = get_promo_post_status(channel_id);
+    promo_post_status = get_promo_post_status(channel_id)
 
-    promotion_submenu_markup = create_promo_post_menu(channel_id, channel_name, promo_post_status)
+    promotion_submenu_markup = await create_promo_post_menu(channel_id, channel_name, promo_post_status, state)
 
     # Edit a message with the promotion submenu options
     await bot.edit_message_text(
@@ -85,7 +86,7 @@ async def promotion_submenu_handler(callback_query: types.CallbackQuery):
 
 # Handler for the "Enable/Disable Promo Post" button
 @dp.callback_query_handler(lambda c: c.data.startswith("togglepromopost_"))
-async def process_toggle_promo_post_button(callback_query: types.CallbackQuery):
+async def process_toggle_promo_post_button(callback_query: types.CallbackQuery, state: FSMContext):
     channel_id = int(callback_query.data.split("_")[1])
     channel_name = callback_query.data.split("_")[2]
 
@@ -106,7 +107,7 @@ async def process_toggle_promo_post_button(callback_query: types.CallbackQuery):
         return
 
     # Create inline buttons for promo post menu
-    markup = create_promo_post_menu(channel_id, channel_name, new_promo_post_enabled)
+    markup = await create_promo_post_menu(channel_id, channel_name, new_promo_post_enabled, state)
 
     # Edit the existing message with the updated promo post status and toggle button
     await bot.edit_message_text(
@@ -117,29 +118,155 @@ async def process_toggle_promo_post_button(callback_query: types.CallbackQuery):
     )
 
 
-# Common function to create inline buttons for the promo post menu
-def create_promo_post_menu(channel_id, channel_name, promo_post_enabled):
+def getChannelById(channel_id):
+    try:
+        response = requests.get(f"http://localhost:8053/api/Channel/{channel_id}")
+        response.raise_for_status()
+        return response.json()
+    except requests.RequestException:
+        return None
+
+
+def updateChannelDetails(channel_id, promo_post_time, promo_post_interval):
+    try:
+        payload = {
+            'PromoPostTime': promo_post_time,
+            'PromoPostInterval': promo_post_interval
+        }
+
+        response = requests.put(
+            f"http://localhost:8053/api/Channel/UpdatePromoPostDetails/{channel_id}",
+            json=payload
+        )
+
+        response.raise_for_status()
+
+        if response.status_code == 200:
+            return True
+        else:
+            return False
+    except requests.RequestException:
+        return False
+
+
+async def create_promo_post_menu(channel_id, channel_name, promo_post_enabled, state: FSMContext):
+    async with state.proxy() as data:
+        # Check if promo_post_time is in state or fetch from API
+        if 'promo_post_time' not in data:
+            channel_data = getChannelById(channel_id)
+            data['promo_post_time'] = channel_data.get('promoPostTime', '10:00:00')
+
+        # Check if promo_post_interval is in state or fetch from API
+        if 'promo_post_interval' not in data:
+            channel_data = channel_data if 'channel_data' in locals() else getChannelById(channel_id)
+            data['promo_post_interval'] = channel_data.get('promoPostInterval', 7)
+
+        current_time = data['promo_post_time']
+        current_interval = data['promo_post_interval']
+
     markup = InlineKeyboardMarkup(row_width=1)
     toggle_text = "Disable" if promo_post_enabled else "Enable"
     toggle_callback_data = f"togglepromopost_{channel_id}_{channel_name}"
+
+    # Save changes button
+    save_changes_data = f"savechanges_{channel_id}_{channel_name}"
+
+    markup.add(InlineKeyboardButton(f"{toggle_text} Promo Post", callback_data=toggle_callback_data))
+    # For promoPostTime
+    markup.row(
+        InlineKeyboardButton("-", callback_data=f"decreasetime_{channel_id}_{channel_name}_{current_time}"),
+        InlineKeyboardButton(f"{current_time}", callback_data="noop"),
+        InlineKeyboardButton("+", callback_data=f"increasetime_{channel_id}_{channel_name}_{current_time}")
+    )
+
+    # For promoPostInterval
+    markup.row(
+        InlineKeyboardButton("-", callback_data=f"decreaseinterval_{channel_id}_{channel_name}_{current_interval}"),
+        InlineKeyboardButton(f"{current_interval} days", callback_data="noop"),
+        InlineKeyboardButton("+", callback_data=f"increaseinterval_{channel_id}_{channel_name}_{current_interval}")
+    )
+
+    # Add back and save buttons
     markup.add(
-        InlineKeyboardButton(f"{toggle_text} Promo Post", callback_data=toggle_callback_data),
-        InlineKeyboardButton("Back to Customization Menu", callback_data=f"customization_{channel_id}_{channel_name}")
+        InlineKeyboardButton("Back to Customization Menu", callback_data=f"customization_{channel_id}_{channel_name}"),
+        InlineKeyboardButton("Save", callback_data=save_changes_data)
     )
     return markup
+
+
+@dp.callback_query_handler(lambda c: c.data.startswith('decreasetime_'))
+async def handle_decrease_time(callback_query: types.CallbackQuery, state: FSMContext):
+    _, channel_id, channel_name, current_time = callback_query.data.split('_')
+    async with state.proxy() as data:
+        time_obj = datetime.strptime(current_time, '%H:%M:%S').time()
+        new_time_obj = (datetime.combine(datetime.today(), time_obj) - timedelta(minutes=30)).time()
+        data['promo_post_time'] = new_time_obj.strftime('%H:%M:%S')
+
+    new_menu = await create_promo_post_menu(channel_id, channel_name, True, state)
+    await bot.edit_message_reply_markup(chat_id=callback_query.message.chat.id,
+                                        message_id=callback_query.message.message_id,
+                                        reply_markup=new_menu)
+
+
+@dp.callback_query_handler(lambda c: c.data.startswith('increasetime_'))
+async def handle_increase_time(callback_query: types.CallbackQuery, state: FSMContext):
+    _, channel_id, channel_name, current_time = callback_query.data.split('_')
+    async with state.proxy() as data:
+        time_obj = datetime.strptime(current_time, '%H:%M:%S').time()
+        new_time_obj = (datetime.combine(datetime.today(), time_obj) + timedelta(minutes=30)).time()
+        data['promo_post_time'] = new_time_obj.strftime('%H:%M:%S')
+
+    new_menu = await create_promo_post_menu(channel_id, channel_name, True, state)
+    await bot.edit_message_reply_markup(chat_id=callback_query.message.chat.id,
+                                        message_id=callback_query.message.message_id,
+                                        reply_markup=new_menu)
+
+
+@dp.callback_query_handler(lambda c: c.data.startswith('decreaseinterval_'))
+async def handle_decrease_interval(callback_query: types.CallbackQuery, state: FSMContext):
+    _, channel_id, channel_name, current_interval = callback_query.data.split('_')
+    async with state.proxy() as data:
+        new_interval = max(1, int(current_interval) - 1)
+        data['promo_post_interval'] = new_interval
+
+    new_menu = await create_promo_post_menu(channel_id, channel_name, True, state)
+    await bot.edit_message_reply_markup(chat_id=callback_query.message.chat.id,
+                                        message_id=callback_query.message.message_id,
+                                        reply_markup=new_menu)
+
+
+@dp.callback_query_handler(lambda c: c.data.startswith('increaseinterval_'))
+async def handle_increase_interval(callback_query: types.CallbackQuery, state: FSMContext):
+    _, channel_id, channel_name, current_interval = callback_query.data.split('_')
+    async with state.proxy() as data:
+        new_interval = int(current_interval) + 1
+        data['promo_post_interval'] = new_interval
+
+    new_menu = await create_promo_post_menu(channel_id, channel_name, True, state)
+    await bot.edit_message_reply_markup(chat_id=callback_query.message.chat.id,
+                                        message_id=callback_query.message.message_id,
+                                        reply_markup=new_menu)
+
+
+@dp.callback_query_handler(lambda c: c.data.startswith('savechanges_'))
+async def handle_save_changes(callback_query: types.CallbackQuery, state: FSMContext):
+    _, channel_id, channel_name = callback_query.data.split('_')
+    async with state.proxy() as data:
+        promo_post_time = data.get('promo_post_time', '10:00:00')
+        promo_post_interval = data.get('promo_post_interval', 7)
+
+    success = updateChannelDetails(channel_id, promo_post_time, int(promo_post_interval))
+    if success:
+        await bot.answer_callback_query(callback_query.id, "Details saved successfully!")
+        await state.finish()  # End the state once the changes are saved
+    else:
+        await bot.answer_callback_query(callback_query.id, "Failed to save details. Please try again.")
 
 
 @dp.callback_query_handler(lambda c: c.data.startswith("tags_"))
 async def tags_handler(callback_query: types.CallbackQuery, state: FSMContext):
     channel_id = int(callback_query.data.split("_")[1])
     channel_name = callback_query.data.split("_")[2]
-
-    # Вот эту функцию поменять местами
-    # Retrieve the current tags dictionary from the state, or initialize it if it doesn't exist
-
-    # С вот этой
-    # Либо вообще хендлер отдельный вьебать
-    # Extract the tag and action from the callback data
     callback_arguments = callback_query.data.split("_")
     if len(callback_arguments) > 3:
         action = callback_query.data.split("_")[3]
