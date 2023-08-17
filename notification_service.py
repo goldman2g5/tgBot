@@ -23,7 +23,7 @@ async def send_bump_notification(notification):
 
 
 async def send_sub_notification(notification):
-    channel_name = notification['channelName']
+    channel_name = notification['channelTelegramName']
     telegram_chat_id = notification['telegramChatId']
     channel_id = notification['channelId']
 
@@ -33,13 +33,16 @@ async def send_sub_notification(notification):
 async def send_promo_post_notification(notification):
     channel_telegram_id = notification['channelTelegramId']
     channel_id = notification['channelId']
+    channel_name = notification['channelTelegramName']
 
     # Send the notification to the user using the bot
     markup = types.InlineKeyboardMarkup(row_width=1)
     markup.add(
         types.InlineKeyboardButton("Promo", callback_data=f"promo_{channel_id}_delete"),
     )
-    await bot.send_message(channel_telegram_id, "It's time for a promotional post!", reply_markup=markup)
+    print(channel_telegram_id)
+    print(channel_name)
+    await bot.send_message(channel_name, "It's time for a promotional post!", reply_markup=markup)
 
 
 async def fetch_notifications():
@@ -62,6 +65,7 @@ async def fetch_notifications():
         response = requests.get('http://localhost:8053/api/Notification/GetPromoPosts')  # Replace with your endpoint
         response.raise_for_status()
         promo_notifications = response.json()
+        print(promo_notifications)
         for notification in promo_notifications:
             await send_promo_post_notification(notification)
 
@@ -77,5 +81,5 @@ async def check_notifications():
 
 async def start_notification_service(dispatcher: Dispatcher):
     # Start the APScheduler scheduler
-    scheduler.add_job(check_notifications, IntervalTrigger(minutes=1))
+    scheduler.add_job(check_notifications, IntervalTrigger(seconds=5))
     scheduler.start()
