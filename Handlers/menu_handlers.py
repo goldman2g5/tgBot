@@ -12,7 +12,7 @@ from states import AddChannelStates
 
 
 def send_message(connection_id, username, user_id):
-    url = "http://localhost:8053/api/Message"  # Replace with the actual URL of your API
+    url = "http://46.39.232.190:8053/api/Message"  # Replace with the actual URL of your API
 
     payload = {
         "username": username,

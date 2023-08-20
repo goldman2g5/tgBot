@@ -104,108 +104,144 @@ async def process_channel_name(message: types.Message, state: FSMContext):
     await AddChannelStates.waiting_for_check.set()
 
 
-@dp.callback_query_handler(state=AddChannelStates.waiting_for_check, text="add_bot")
-async def process_add_bot(callback_query: types.CallbackQuery, state: FSMContext):
+async def is_user_admin(channel_name, user_id):
+    try:
+        chat = await bot.get_chat(channel_name)
+        member = await bot.get_chat_member(chat.id, user_id)
+        return member.status in ("administrator", "creator")
+    except Exception:
+        return False
+
+
+async def get_channel_avatar(chat):
+    if not chat.photo:
+        return None
+
+    avatar = chat.photo
+    avatar_file = io.BytesIO()
+    await avatar.download_small(destination=avatar_file)
+    avatar_bytes = avatar_file.getvalue()
+
+    return base64.b64encode(avatar_bytes).decode()
+
+
+async def process_add_bot_core(callback_query, state):
     data = await state.get_data()
     channel_name = data.get("channel_name")
-    channel_id = data.get("channel_id")  # Retrieve the channel_id from the state
-
+    channel_id = data.get("channel_id")
     user = callback_query.from_user
 
-    # Check if the bot is added to the channel
-    if await check_bot_in_channel(channel_name):
-        # Check if the user is an administrator of the channel
-        try:
-            chat = await bot.get_chat(channel_name)
-            member = await bot.get_chat_member(chat.id, user.id)
-            if member.status in ("administrator", "creator"):
-                # Store channel_name, user_id, and channel_id in the state
-                await state.update_data(channel_name=channel_name, user_id=user.id, channel_id=channel_id)
-                await callback_query.answer("Success! Bot added to the channel.")
+    if not await check_bot_in_channel(channel_name):
+        return "Error: Bot was not added to the channel."
 
-                sent_message = await callback_query.message.answer("Please enter the channel description:",
-                                                                   reply_markup=InlineKeyboardMarkup(row_width=1)
-                                                                   .add(InlineKeyboardButton("Cancel",
-                                                                                             callback_data="cancel_enter_description")))
+    if not await is_user_admin(channel_name, user.id):
+        return "Error: You are not an administrator of the specified channel."
 
-                await update_message_ids(state, callback_query.message.message_id)
-                await update_message_ids(state, sent_message.message_id)
+    await state.update_data(channel_name=channel_name, user_id=user.id, channel_id=channel_id)
+    sent_message = await callback_query.message.answer(
+        "Please enter the channel description:",
+        reply_markup=InlineKeyboardMarkup(row_width=1)
+        .add(InlineKeyboardButton("Cancel", callback_data="cancel_enter_description"))
+    )
 
-                await AddChannelStates.waiting_for_channel_description.set()
-                return
-            else:
-                message = "Error: You are not an administrator of the specified channel."
-        except Exception as e:
-            message = f"Error occurred during verification: {e}"
-    else:
-        message = "Error: Bot was not added to the channel."
+    await update_message_ids(state, callback_query.message.message_id)
+    await update_message_ids(state, sent_message.message_id)
+    await AddChannelStates.waiting_for_channel_description.set()
 
+    return "Success! Bot added to the channel."
+
+
+@dp.callback_query_handler(state=AddChannelStates.waiting_for_check, text="add_bot")
+async def process_add_bot(callback_query: types.CallbackQuery, state: FSMContext):
+    message = await process_add_bot_core(callback_query, state)
     await callback_query.answer(message)
 
 
-@dp.message_handler(state=AddChannelStates.waiting_for_channel_description)
-async def process_channel_description(message: types.Message, state: FSMContext):
+async def process_channel_description_core(message, state):
     data = await state.get_data()
     channel_name = data.get("channel_name")
-    user_id = data.get("user_id")  # Retrieve the user's ID from the state
-    channel_id = data.get("channel_id")  # Retrieve the channel_id from the state
+    user_id = data.get("user_id")
 
     if channel_name is None:
-        # Handle the case when channel_name is not available in the state
         await message.answer("Error: Failed to get channel information.")
         await state.finish()
         return
 
     channel_description = message.text
+    if len(channel_description) > 130:
+        error_msg = await message.answer("Error: Description must be 130 symbols or shorter. Please enter it again.")
+        await update_message_ids(state, error_msg.message_id)
+        return  # Return early so user can re-enter
 
-    # Retrieve the member count
+    await state.update_data(channel_description=channel_description)
+
+
+@dp.message_handler(state=AddChannelStates.waiting_for_channel_description)
+async def process_channel_description(message: types.Message, state: FSMContext):
+    await process_channel_description_core(message, state)
+
+    markup = InlineKeyboardMarkup(row_width=1).add(
+        InlineKeyboardButton("Русский", callback_data="language_ru"),
+        InlineKeyboardButton("Английский", callback_data="language_en"),
+        InlineKeyboardButton("Украинский", callback_data="language_uk")
+    )
+    await message.answer("Выберете язык вашего канала", reply_markup=markup)
+    await AddChannelStates.waiting_for_language_selection.set()
+
+
+@dp.callback_query_handler(state=AddChannelStates.waiting_for_language_selection)
+async def process_language_selection(callback_query: types.CallbackQuery, state: FSMContext):
+    chosen_language = callback_query.data.split("_")[1]
+    await state.update_data(language=chosen_language)
+
+    markup = InlineKeyboardMarkup(row_width=1).add(
+        InlineKeyboardButton("🇷🇺", callback_data="flag_ru"),
+        InlineKeyboardButton("🇬🇧", callback_data="flag_en"),
+        InlineKeyboardButton("🇺🇦", callback_data="flag_uk")
+    )
+    await callback_query.message.answer("Выберете флаг вашего канала", reply_markup=markup)
+    await AddChannelStates.waiting_for_flag_selection.set()
+
+
+@dp.callback_query_handler(state=AddChannelStates.waiting_for_flag_selection)
+async def process_flag_selection(callback_query: types.CallbackQuery, state: FSMContext):
+    chosen_flag = callback_query.data.split("_")[1]
+    data = await state.get_data()
+
+    chosen_language = data.get("language")
+    channel_description = data.get("channel_description")
+    channel_name = data.get("channel_name")
+    channel_id = data.get("channel_id")
+    user_id = data.get("user_id")
     chat = await bot.get_chat(channel_name)
     members_count = await bot.get_chat_members_count(chat.id)
+    avatar_base64 = await get_channel_avatar(chat)
 
-    # Get the channel avatar
-    avatar_bytes = None
-    if chat.photo:
-        avatar = chat.photo
-        avatar_file = io.BytesIO()
-        await avatar.download_small(destination=avatar_file)
-        avatar_bytes = avatar_file.getvalue()
-
-    # Convert avatar bytes to base64 string
-    avatar_base64 = base64.b64encode(avatar_bytes).decode() if avatar_bytes else None
-
-    # Retrieve user_id from the database
+    # Save all details now
     db_user_id = await get_user_id_from_database(user_id)
-
     if db_user_id is None:
-        await message.answer("Error: Failed to get user information.")
+        await callback_query.message.answer("Error: Failed to get user information.")
         await state.finish()
         return
 
-    # Save channel information to the database and get the channel ID
     channel_id = await save_channel_information(
-        channel_name, channel_description, members_count, avatar_base64, user_id, channel_id
+        channel_name, channel_description, members_count, avatar_base64, user_id, channel_id, chosen_language, chosen_flag
     )
 
     if channel_id == 0:
-        await message.answer("Failed to save channel information.")
+        await callback_query.message.answer("Failed to save channel information.")
         await state.finish()
         return
 
-    # Save channel access
-    channel_access_saved = await save_channel_access(db_user_id, channel_id)
-
-    if channel_access_saved:
-        sent_message = await message.answer("Channel information saved successfully.")
-
-        await update_message_ids(state, message.message_id)
-        await update_message_ids(state, sent_message.message_id)
-        data = await state.get_data()
-
-        await delete_messages(bot, message.chat.id, data.get("message_ids", []))
-
-        await open_menu(message.chat.id, message.message_id)
-
+    if not await save_channel_access(db_user_id, channel_id):
+        await callback_query.message.answer("Failed to save channel access.")
         await state.finish()
-    else:
-        await message.answer("Failed to save channel access.")
-        await state.finish()
+        return
+
+    sent_message = await callback_query.message.answer("Channel information saved successfully.")
+    await update_message_ids(state, callback_query.message.message_id)
+    await update_message_ids(state, sent_message.message_id)
+    data = await state.get_data()
+    await delete_messages(bot, callback_query.message.chat.id, data.get("message_ids", []))
+    await open_menu(callback_query.message.chat.id, callback_query.message.message_id)
+    await state.finish()
