@@ -259,3 +259,39 @@ def toggle_promo_post_status(channel_id, new_promo_post_enabled):
     put_data = {"notifications": new_promo_post_enabled}
     response = requests.put(api_url, put_data)
     return response.status_code == 204  # Return True if the API update was successful
+
+
+def update_channel_flag(channel_id, new_flag):
+    """Update the flag of a given channel."""
+
+    # Construct the endpoint URL
+    endpoint = f"{API_URL}/Channel/{channel_id}/flag"
+
+    # Make the PUT request to update the flag
+    response = requests.put(endpoint, json={"flag": new_flag})
+
+    # Check the response and handle errors
+    if response.status_code == 204:
+        print("Successfully updated the flag!")
+    elif response.status_code == 404:
+        print("Channel not found.")
+    else:
+        print("Failed to update the flag. Server responded with:", response.status_code, response.text)
+
+
+def update_channel_language(channel_id, new_language):
+    """Update the language of a given channel."""
+
+    # Construct the endpoint URL
+    endpoint = f"{API_URL}/Channel/{channel_id}/language"
+
+    # Make the PUT request to update the language
+    response = requests.put(endpoint, json={"language": new_language})
+
+    # Check the response and handle errors
+    if response.status_code == 204:
+        print("Successfully updated the language!")
+    elif response.status_code == 404:
+        print("Channel not found.")
+    else:
+        print("Failed to update the language. Server responded with:", response.status_code, response.text)

@@ -9,7 +9,8 @@ from aiogram import types
 from aiogram.dispatcher import FSMContext
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ContentType
 from api import get_notification_status, toggle_notification_status, bump_channel, get_tags, save_tags, \
-    get_channel_tags, get_subscriptions_from_api, subscribe_channel, get_promo_post_status, toggle_promo_post_status
+    get_channel_tags, get_subscriptions_from_api, subscribe_channel, get_promo_post_status, toggle_promo_post_status, \
+    update_channel_language, update_channel_flag
 from bot import dp, bot
 from misc import open_menu, create_notifications_menu
 from datetime import datetime, timedelta
@@ -116,9 +117,9 @@ async def edit_flags_handler(callback_query: types.CallbackQuery, state: FSMCont
 
     # Create inline buttons for flags options
     markup = InlineKeyboardMarkup(row_width=1).add(
-        InlineKeyboardButton("🇷🇺 Russia", callback_data=f"flag_choice_ru_{channel_id}_{channel_name}"),
-        InlineKeyboardButton("🇬🇧 UK", callback_data=f"flag_choice_en_{channel_id}_{channel_name}"),
-        InlineKeyboardButton("🇺🇦 Ukraine", callback_data=f"flag_choice_uk_{channel_id}_{channel_name}"),
+        InlineKeyboardButton("🇷🇺 Russia", callback_data=f"flagchoice_ru_{channel_id}_{channel_name}"),
+        InlineKeyboardButton("🇬🇧 UK", callback_data=f"flagchoice_en_{channel_id}_{channel_name}"),
+        InlineKeyboardButton("🇺🇦 Ukraine", callback_data=f"flagchoice_uk_{channel_id}_{channel_name}"),
         InlineKeyboardButton("Back", callback_data=f"lang_settings_{channel_id}_{channel_name}")
     )
 
@@ -130,12 +131,10 @@ async def edit_flags_handler(callback_query: types.CallbackQuery, state: FSMCont
     )
 
 
-@dp.callback_query_handler(lambda c: c.data.startswith("flag_choice_"))
+@dp.callback_query_handler(lambda c: c.data.startswith("flagchoice_"))
 async def flag_choice_handler(callback_query: types.CallbackQuery, state: FSMContext):
     _, flag_iso_code, channel_id, channel_name = callback_query.data.split("_")
 
-    # Here, you can save the user's flag choice or perform any related operation.
-    # For demonstration purposes, a dictionary mapping the ISO codes to flag names is created.
     flag_names = {
         "ru": "ru",
         "en": "us",
@@ -144,10 +143,11 @@ async def flag_choice_handler(callback_query: types.CallbackQuery, state: FSMCon
 
     selected_flag_name = flag_names.get(flag_iso_code, "Unknown")
 
-    await bot.send_message(
-        chat_id=callback_query.message.chat.id,
-        text=f"You've chosen the {selected_flag_name} flag for the channel: {channel_name}"
-    )
+    # Update flag in the backend
+    update_channel_flag(channel_id, selected_flag_name)
+
+    await bot.answer_callback_query(callback_query.id, text=f"Flag for {channel_name} updated to {selected_flag_name}")
+
 
 @dp.callback_query_handler(lambda c: c.data.startswith("language_"))
 async def language_selection_handler(callback_query: types.CallbackQuery, state: FSMContext):
@@ -155,8 +155,8 @@ async def language_selection_handler(callback_query: types.CallbackQuery, state:
     channel_id = int(callback_query.data.split("_")[2])
     channel_name = callback_query.data.split("_")[3]
 
-    # TODO: Update the channel's language in the database or where it's stored
-    # e.g., update_channel_language(channel_id, chosen_language)
+    # Update the channel's language in the backend
+    update_channel_language(channel_id, chosen_language)
 
     await bot.answer_callback_query(callback_query.id, text=f"Language for {channel_name} updated to {chosen_language}")
 
