@@ -66,7 +66,7 @@ async def process_channel_name(message: types.Message, state: FSMContext):
     channel_name_input = message.text.strip()
 
     # Regular expression pattern to match the different formats of channel names
-    channel_name_pattern = r"(?:https?://t\.me/|@)?(.+)"
+    channel_name_pattern = r"(?:https?://t\.me/|t\.me/|@)?([^/\s]+)"
     match = re.match(channel_name_pattern, channel_name_input)
     if match:
         channel_name = "@" + match.group(1)
@@ -83,6 +83,7 @@ async def process_channel_name(message: types.Message, state: FSMContext):
 
     # Retrieve the channel ID using bot.get_chat
     try:
+        print(channel_name)
         chat = await bot.get_chat(channel_name)
         channel_id = chat.id
         # Store the channel_id in the state

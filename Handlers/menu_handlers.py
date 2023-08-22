@@ -89,7 +89,7 @@ async def add_channel_handler(callback_query: types.CallbackQuery):
 async def manage_channels_handler(callback_query: types.CallbackQuery):
     # Get the user's ID
     user_id = callback_query.from_user.id
-
+    print(user_id)
     # Retrieve the user's channels from the API
     channels = get_user_channels(user_id)
 
