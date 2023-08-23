@@ -58,7 +58,6 @@ async def customization_handler(callback_query: types.CallbackQuery, state: FSMC
         InlineKeyboardButton("Additional Promotion", callback_data=f"promotion_{channel_id}_{channel_name}"),
         InlineKeyboardButton("Description", callback_data=f"description_{channel_id}"),
         InlineKeyboardButton("Language Settings", callback_data=f"lang_settings_{channel_id}_{channel_name}"),
-        InlineKeyboardButton("Update Data", callback_data=f"update_data_{channel_id}"),
         InlineKeyboardButton("Back to Menu", callback_data=f"channel_{channel_id}_{channel_name}")
     )
 
@@ -529,9 +528,8 @@ async def process_subscription_button(callback_query: types.CallbackQuery):
 YCASSATOKEN = "381764678:TEST:59527"
 
 
-# Handler for subscription choice buttons
 @dp.callback_query_handler(lambda c: c.data.startswith("subscriptionchoice_"))
-async def process_subscription_choice(callback_query: types.CallbackQuery):
+async def process_subscription_choice(callback_query: types.CallbackQuery, state: FSMContext):
     choice_data = callback_query.data.split("_")
     channel_id = int(choice_data[1])
     channel_name = choice_data[2]
@@ -550,8 +548,21 @@ async def process_subscription_choice(callback_query: types.CallbackQuery):
             invoice_currency = "RUB"
             invoice_prices = [{"label": "Руб", "amount": selected_subscription['price'] * 100}]
 
+            # Send a message with the cancel option and store its message ID
+            cancel_button = InlineKeyboardButton("Cancel", callback_data="cancel_subscription")
+            keyboard = InlineKeyboardMarkup()
+            keyboard.add(cancel_button)
+            cancel_msg = await bot.send_message(
+                chat_id=callback_query.from_user.id,
+                text="Click 'Cancel' to stop the subscription process.",
+                reply_markup=keyboard
+            )
+
+            # Store the message ID in user's state data
+            await state.set_data({'cancel_msg_id': cancel_msg.message_id})
+
             # Send the invoice
-            await bot.send_invoice(
+            invoice_message = await bot.send_invoice(
                 chat_id=callback_query.from_user.id,
                 title=invoice_title,
                 description=invoice_description,
@@ -561,10 +572,33 @@ async def process_subscription_choice(callback_query: types.CallbackQuery):
                 start_parameter="test_bot",
                 prices=invoice_prices
             )
+            # Store the invoice message ID
+            await state.update_data(invoice_msg_id=invoice_message.message_id)
         else:
             await callback_query.answer("Invalid subscription choice.")
     else:
         await callback_query.answer("Failed to retrieve subscription data from the API.")
+
+
+# Handler for cancel subscription button
+@dp.callback_query_handler(lambda c: c.data == "cancel_subscription")
+async def process_cancel_subscription(callback_query: types.CallbackQuery, state: FSMContext):
+    user_data = await state.get_data()
+
+    # Retrieve message IDs from the state
+    cancel_msg_id = user_data.get('cancel_msg_id')
+    invoice_msg_id = user_data.get('invoice_msg_id')
+
+    # Delete the cancel button message
+    if cancel_msg_id:
+        await bot.delete_message(chat_id=callback_query.from_user.id, message_id=cancel_msg_id)
+
+    # Delete the invoice message
+    if invoice_msg_id:
+        await bot.delete_message(chat_id=callback_query.from_user.id, message_id=invoice_msg_id)
+
+    # Finish the state
+    await state.finish()
 
 
 @dp.pre_checkout_query_handler()
