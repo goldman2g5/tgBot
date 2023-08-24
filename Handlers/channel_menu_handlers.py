@@ -3,6 +3,7 @@ import datetime
 import json
 import logging
 
+import aiogram.types
 import aiohttp
 import requests
 from aiogram import types
@@ -14,6 +15,7 @@ from api import get_notification_status, toggle_notification_status, bump_channe
 from bot import dp, bot
 from misc import open_menu, create_notifications_menu
 from datetime import datetime, timedelta
+from aiogram.dispatcher.filters.state import StatesGroup, State
 
 
 @dp.callback_query_handler(lambda c: c.data.startswith("channel_"))
@@ -44,7 +46,12 @@ async def channel_menu_handler(callback_query: types.CallbackQuery):
         await callback_query.message.answer(reply_markup=markup)
 
 
-@dp.callback_query_handler(lambda c: c.data.startswith("customization_"))
+class DescriptionState(StatesGroup):
+    waiting_for_description = State()
+
+
+@dp.callback_query_handler(
+    lambda c: c.data.startswith("customization_") and not c.data.startswith("customization_description"))
 async def customization_handler(callback_query: types.CallbackQuery, state: FSMContext):
     channel_id = int(callback_query.data.split("_")[1])
     channel_name = callback_query.data.split("_")[2]
@@ -56,7 +63,7 @@ async def customization_handler(callback_query: types.CallbackQuery, state: FSMC
     markup.add(
         InlineKeyboardButton("Tags", callback_data=f"tags_{channel_id}_{channel_name}"),
         InlineKeyboardButton("Additional Promotion", callback_data=f"promotion_{channel_id}_{channel_name}"),
-        InlineKeyboardButton("Description", callback_data=f"description_{channel_id}"),
+        InlineKeyboardButton("Description", callback_data=f"customization_description_{channel_id}"),
         InlineKeyboardButton("Language Settings", callback_data=f"lang_settings_{channel_id}_{channel_name}"),
         InlineKeyboardButton("Back to Menu", callback_data=f"channel_{channel_id}_{channel_name}")
     )
@@ -68,6 +75,49 @@ async def customization_handler(callback_query: types.CallbackQuery, state: FSMC
         text=f"Customization options: {channel_name}",
         reply_markup=markup
     )
+
+
+@dp.callback_query_handler(lambda c: c.data.startswith("customization_description"))
+async def description_handler(callback_query: types.CallbackQuery, state: FSMContext):
+    markup = InlineKeyboardMarkup()
+    markup.add(InlineKeyboardButton("Cancel", callback_data="cancel_description"))
+
+    sent_message = await bot.send_message(callback_query.message.chat.id,
+                                          "Please enter the new description for the channel:", reply_markup=markup)
+
+    # Store the bot's message ID and the callback query's message ID in the state
+    await state.set_data({
+        'messages_to_delete': [sent_message.message_id]
+    })
+
+    await DescriptionState.waiting_for_description.set()
+
+
+@dp.message_handler(state=DescriptionState.waiting_for_description)
+async def process_description(message: types.Message, state: FSMContext):
+    # Retrieve the message IDs from the state
+    data = await state.get_data()
+    messages_to_delete = data.get('messages_to_delete', [])
+
+    # Add the user's message ID to the list
+    messages_to_delete.append(message.message_id)
+
+    # Delete all the messages
+    for msg_id in messages_to_delete:
+        await bot.delete_message(chat_id=message.chat.id, message_id=msg_id)
+
+    await state.finish()
+
+
+@dp.callback_query_handler(lambda c: c.data == "cancel_description", state=DescriptionState.waiting_for_description)
+async def cancel_description(callback_query: types.CallbackQuery, state: FSMContext):
+    # Retrieve the message IDs from the state
+    data = await state.get_data()
+    messages_to_delete = data.get('messages_to_delete', [])
+
+    for msg_id in messages_to_delete:
+        await bot.delete_message(chat_id=callback_query.message.chat.id, message_id=msg_id)
+    await state.finish()
 
 
 @dp.callback_query_handler(lambda c: c.data.startswith("lang_settings_"))
@@ -95,16 +145,16 @@ async def edit_language_handler(callback_query: types.CallbackQuery, state: FSMC
     channel_name = callback_query.data.split("_")[3]
 
     markup = InlineKeyboardMarkup(row_width=1).add(
-        InlineKeyboardButton("Русский", callback_data=f"language_ru_{channel_id}_{channel_name}"),
-        InlineKeyboardButton("Английский", callback_data=f"language_en_{channel_id}_{channel_name}"),
-        InlineKeyboardButton("Украинский", callback_data=f"language_uk_{channel_id}_{channel_name}"),
+        InlineKeyboardButton("RU", callback_data=f"language_ru_{channel_id}_{channel_name}"),
+        InlineKeyboardButton("EU", callback_data=f"language_en_{channel_id}_{channel_name}"),
+        InlineKeyboardButton("UA", callback_data=f"language_uk_{channel_id}_{channel_name}"),
         InlineKeyboardButton("Back", callback_data=f"lang_settings_{channel_id}_{channel_name}")
     )
 
     await bot.edit_message_text(
         chat_id=callback_query.message.chat.id,
         message_id=callback_query.message.message_id,
-        text=f"Выберете язык для канала: {channel_name}",
+        text=f"Language settings for: {channel_name}",
         reply_markup=markup
     )
 
