@@ -602,14 +602,7 @@ async def process_subscription_choice(callback_query: types.CallbackQuery, state
             cancel_button = InlineKeyboardButton("Cancel", callback_data="cancel_subscription")
             keyboard = InlineKeyboardMarkup()
             keyboard.add(cancel_button)
-            cancel_msg = await bot.send_message(
-                chat_id=callback_query.from_user.id,
-                text="Click 'Cancel' to stop the subscription process.",
-                reply_markup=keyboard
-            )
 
-            # Store the message ID in user's state data
-            await state.set_data({'cancel_msg_id': cancel_msg.message_id})
 
             # Send the invoice
             invoice_message = await bot.send_invoice(
@@ -624,6 +617,15 @@ async def process_subscription_choice(callback_query: types.CallbackQuery, state
             )
             # Store the invoice message ID
             await state.update_data(invoice_msg_id=invoice_message.message_id)
+
+            cancel_msg = await bot.send_message(
+                chat_id=callback_query.from_user.id,
+                text="Click 'Cancel' to stop the subscription process.",
+                reply_markup=keyboard
+            )
+
+            # Store the message ID in user's state data
+            await state.set_data({'cancel_msg_id': cancel_msg.message_id, 'invoice_msg_id': invoice_message.message_id})
         else:
             await callback_query.answer("Invalid subscription choice.")
     else:
