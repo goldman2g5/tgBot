@@ -182,11 +182,13 @@ async def process_channel_description(message: types.Message, state: FSMContext)
     await process_channel_description_core(message, state)
 
     markup = InlineKeyboardMarkup(row_width=1).add(
-        InlineKeyboardButton("Русский", callback_data="language_ru"),
-        InlineKeyboardButton("Английский", callback_data="language_en"),
-        InlineKeyboardButton("Украинский", callback_data="language_uk")
+        InlineKeyboardButton("Ru", callback_data="language_ru"),
+        InlineKeyboardButton("Eu", callback_data="language_en"),
+        InlineKeyboardButton("Ua", callback_data="language_uk")
     )
-    await message.answer("Выберете язык вашего канала", reply_markup=markup)
+    sent_message = await message.answer("Choose channel language", reply_markup=markup)
+    await update_message_ids(state, message.message_id)
+    await update_message_ids(state, sent_message.message_id)
     await AddChannelStates.waiting_for_language_selection.set()
 
 
@@ -244,5 +246,5 @@ async def process_flag_selection(callback_query: types.CallbackQuery, state: FSM
     await update_message_ids(state, sent_message.message_id)
     data = await state.get_data()
     await delete_messages(bot, callback_query.message.chat.id, data.get("message_ids", []))
-    await open_menu(callback_query.message.chat.id, callback_query.message.message_id)
+    # await open_menu(callback_query.message.chat.id, callback_query.message.message_id)
     await state.finish()

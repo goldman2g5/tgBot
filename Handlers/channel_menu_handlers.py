@@ -592,7 +592,7 @@ async def process_subscription_choice(callback_query: types.CallbackQuery, state
         selected_subscription = next((sub for sub in subscriptions if str(sub['id']) == subscription_type), None)
         if selected_subscription:
             # Prepare the invoice details
-            invoice_title = f"Оформление подписки на {channel_name}"
+            invoice_title = f"Make  {channel_name}"
             invoice_description = "Тестовое описание товара"
             invoice_payload = f"{channel_id}_{channel_name}_{selected_subscription['id']}_{selected_subscription['name']}"
             invoice_currency = "RUB"
