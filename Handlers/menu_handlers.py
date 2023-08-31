@@ -13,10 +13,10 @@ from states import AddChannelStates
 
 def send_message(connection_id, username, user_id):
     # url = "http://46.39.232.190:8053/api/Message"  # Replace with the actual URL of your API
-    url = "http://localhost:7256/api/Message"
+    url = "http://localhost:7256/api/Auth"
     payload = {
-        "username": username,
-        "userId": user_id
+        "Username": username,
+        "UserId": user_id
     }
 
     params = {
@@ -29,7 +29,7 @@ def send_message(connection_id, username, user_id):
         print("Message sent successfully")
     else:
         print("Failed to send message")
-        print(response.text)
+        print(response)
 
 
 # Handler for the /start command
@@ -40,18 +40,31 @@ async def cmd_start(message: types.Message):
 
     args = message.get_args()
 
+    save_user_info(user_id, message.chat.id)
+
     if args:
         connection_id = args
         print(connection_id)
         send_message(connection_id, username, user_id)
+        markup = InlineKeyboardMarkup()
+        markup.add(InlineKeyboardButton("Got it", callback_data="remove_authorize_msg"))
+        await bot.delete_message(message.chat.id, message.message_id)
+        await bot.send_message(message.chat.id, "You are authorized, go back to the website", reply_markup=markup)
+        return
 
     # Write user info to the database
-    save_user_info(user_id, message.chat.id)
+
     # Open the menu
     markup = InlineKeyboardMarkup(row_width=1)
     markup.add(InlineKeyboardButton("Add Channel", callback_data="add_channel"),
                InlineKeyboardButton("Manage Channels", callback_data="manage_channels"))
     await bot.send_message(message.chat.id, "Menu:", reply_markup=markup)
+
+
+@dp.callback_query_handler(lambda c: c.data == 'remove_authorize_msg')
+async def remove_authorization_messages(callback_query: types.CallbackQuery):
+    # Deleting the success message
+    await bot.delete_message(callback_query.message.chat.id, callback_query.message.message_id)
 
 
 @dp.callback_query_handler(lambda c: c.data == "back_to_menu")
