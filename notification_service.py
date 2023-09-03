@@ -23,7 +23,7 @@ async def send_bump_notification(notification):
 
 
 async def send_sub_notification(notification):
-    channel_name = notification['channelTelegramName']
+    channel_name = notification['channelName']
     telegram_chat_id = notification['telegramChatId']
     channel_id = notification['channelId']
 
@@ -81,5 +81,5 @@ async def check_notifications():
 
 async def start_notification_service(dispatcher: Dispatcher):
     # Start the APScheduler scheduler
-    scheduler.add_job(check_notifications, IntervalTrigger(minutes=3))
+    scheduler.add_job(check_notifications, IntervalTrigger(seconds=30))
     scheduler.start()

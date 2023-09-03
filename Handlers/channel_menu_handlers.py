@@ -702,7 +702,7 @@ async def process_bump_button(callback_query: types.CallbackQuery):
             time_left = response.headers.get("X-TimeLeft")
             if time_left:
                 time_left = int(time_left)
-                duration = datetime.timedelta(seconds=time_left)
+                duration = timedelta(seconds=time_left)
                 hours = duration.seconds // 3600
                 minutes = (duration.seconds // 60) % 60
                 time_left_str = f"{hours} hours and {minutes} minutes"
