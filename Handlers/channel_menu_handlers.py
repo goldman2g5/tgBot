@@ -12,16 +12,62 @@ from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ContentTyp
 from api import get_notification_status, toggle_notification_status, bump_channel, get_tags, save_tags, \
     get_channel_tags, get_subscriptions_from_api, subscribe_channel, get_promo_post_status, toggle_promo_post_status, \
     update_channel_language, update_channel_flag
-from bot import dp, bot
+from bot import dp, bot, client
 from misc import open_menu, create_notifications_menu
 from datetime import datetime, timedelta
 from aiogram.dispatcher.filters.state import StatesGroup, State
+
+
+
+
+
+def remove_negative_100(n: int) -> int:
+    s = str(n)
+    prefix = "-100"
+    if s.startswith(prefix):
+        return int(s[len(prefix):])
+    return n
+
+async def get_chat_statistics(chat_id):
+    await client.stop()
+
+    await client.start()
+
+    me = await client.api.get_me()
+    logging.info(f"Successfully logged in as {me.json()}")
+
+    chat_id = remove_negative_100(chat_id)
+
+    supergroup = await client.get_supergroup(supergroup_id=chat_id, force_update=True)
+    print(supergroup.id)
+
+    stats_url = await client.api.get_supergroup_full_info(supergroup_id=supergroup.id)
+
+    print(stats_url)
+
+    await client.stop()
+
+
+
+    # stats = await client.api.get_chat(chat_id)
+
+    # logging.info(f"Statistics URL: {stats_url}")
+
+    # If you want to actually get the statistics content, you can make an HTTP request to the stats_url
 
 
 @dp.callback_query_handler(lambda c: c.data.startswith("channel_"))
 async def channel_menu_handler(callback_query: types.CallbackQuery):
     channel_id = int(callback_query.data.split("_")[1])
     channel_name = callback_query.data.split("_")[2]
+
+    chat = await bot.get_chat("@anima_shiza_autora")
+
+    chatid = chat.id
+
+    print(chat.id)
+
+    await get_chat_statistics(chatid)
 
     # Create inline buttons for channel menu
     markup = InlineKeyboardMarkup(row_width=1)
@@ -602,7 +648,6 @@ async def process_subscription_choice(callback_query: types.CallbackQuery, state
             cancel_button = InlineKeyboardButton("Cancel", callback_data="cancel_subscription")
             keyboard = InlineKeyboardMarkup()
             keyboard.add(cancel_button)
-
 
             # Send the invoice
             invoice_message = await bot.send_invoice(
