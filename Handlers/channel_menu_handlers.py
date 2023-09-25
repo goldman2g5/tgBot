@@ -18,42 +18,72 @@ from datetime import datetime, timedelta
 from aiogram.dispatcher.filters.state import StatesGroup, State
 
 
+# def remove_negative_100(n: int) -> int:
+#     s = str(n)
+#     prefix = "-100"
+#     if s.startswith(prefix):
+#         return int(s[len(prefix):])
+#     return n
+#
+# async def get_chat_statistics(chat_id):
+#     await client.stop()
+#
+#     await client.start()
+#
+#     me = await client.api.get_me()
+#     logging.info(f"Successfully logged in as {me.json()}")
+#
+#     chat_id = remove_negative_100(chat_id)
+#
+#     supergroup = await client.get_supergroup(supergroup_id=chat_id, force_update=True)
+#     print(supergroup.id)
+#
+#     stats_url = await client.api.get_supergroup_full_info(supergroup_id=supergroup.id)
+#
+#     print(stats_url)
+#
+#     await client.stop()
+#
+#
+#
+#     # stats = await client.api.get_chat(chat_id)
+#
+#     # logging.info(f"Statistics URL: {stats_url}")
+#
+#     # If you want to actually get the statistics content, you can make an HTTP request to the stats_url
 
-
-
-def remove_negative_100(n: int) -> int:
-    s = str(n)
-    prefix = "-100"
-    if s.startswith(prefix):
-        return int(s[len(prefix):])
-    return n
-
-async def get_chat_statistics(chat_id):
-    await client.stop()
-
+async def fetch_all_messages(channel_id):
     await client.start()
-
     me = await client.api.get_me()
     logging.info(f"Successfully logged in as {me.json()}")
 
-    chat_id = remove_negative_100(chat_id)
+    all_messages = []
+    last_message_id = 0
+    offset = 0  # Initialize offset
+    only_local = False  # Initialize only_local flag
 
-    supergroup = await client.get_supergroup(supergroup_id=chat_id, force_update=True)
-    print(supergroup.id)
+    messages = await client.api.get_chat_history(
+        channel_id,
+        offset=offset,
+        from_message_id=0,
+        limit=100,
+        only_local=only_local
+    )
 
-    stats_url = await client.api.get_supergroup_full_info(supergroup_id=supergroup.id)
+    all_messages.extend(messages)
 
-    print(stats_url)
+    timestamp = 1695646789
+
+    # Convert to a datetime object
+    dt_object = datetime.fromtimestamp(timestamp)
+
+    # Format the datetime object as a string in your desired format
+    formatted_time = dt_object.strftime('%Y-%m-%d %H:%M:%S')
+
+    print(formatted_time)
 
     await client.stop()
-
-
-
-    # stats = await client.api.get_chat(chat_id)
-
-    # logging.info(f"Statistics URL: {stats_url}")
-
-    # If you want to actually get the statistics content, you can make an HTTP request to the stats_url
+    return all_messages
 
 
 @dp.callback_query_handler(lambda c: c.data.startswith("channel_"))
@@ -67,7 +97,9 @@ async def channel_menu_handler(callback_query: types.CallbackQuery):
 
     print(chat.id)
 
-    await get_chat_statistics(chatid)
+    all_messages = await fetch_all_messages(chatid)
+
+    print(all_messages)
 
     # Create inline buttons for channel menu
     markup = InlineKeyboardMarkup(row_width=1)

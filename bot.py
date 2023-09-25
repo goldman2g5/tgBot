@@ -18,8 +18,7 @@ PHONE_NUMBER = "+79103212166"
 client = Client(
     api_id=API_ID,
     api_hash=API_HASH,
-    # bot_token=bot_token_secret,
-    phone_number="+79103212166",
+    phone_number=PHONE_NUMBER,
     library_path='C:/Users/timar/td/tdlib/bin/tdjson.dll'
 )
 
