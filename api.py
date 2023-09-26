@@ -4,7 +4,7 @@ from typing import List
 import aiohttp
 import requests
 
-API_URL = "http://localhost:8053/api"
+API_URL = "http://localhost:7256/api"
 
 # Configure logging settings
 logging.basicConfig(level=logging.INFO, filename="logs.log", filemode="w",
@@ -15,14 +15,20 @@ logger = logging.getLogger(__name__)
 
 
 # Function to save user info in the database
-def save_user_info(user_id, chat_id):
+def save_user_info(user_id: int, chat_id: int, username: str, avatar: str):
     user = {
-        "TelegramId": user_id,
-        "ChatId": chat_id
+        "telegramId": user_id,
+        "chatId": chat_id,
+        "username": username,
+        "avatar": avatar
     }
+
+    print(user)
+
     response = requests.post(f"{API_URL}/User", json=user)
+
     if response.status_code != 201:
-        logger.critical(f"Failed to save user info\nTelegramId: {user_id}\nChatId: {chat_id}\n{response}")
+        logger.critical(f"Failed to save user info\nTelegramId: {user_id}\nChatId: {chat_id}\n{response.text}")
 
 
 async def save_channel_information(channel_name: str, channel_description: str, members_count: int, avatar_base64: str,

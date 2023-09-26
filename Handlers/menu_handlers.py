@@ -1,4 +1,6 @@
+import base64
 import urllib
+from asyncio import exceptions
 from urllib import parse
 from urllib.parse import parse_qs
 
@@ -31,16 +33,32 @@ def send_message(connection_id, username, user_id):
         print("Failed to send message")
         print(response)
 
+def bytes_to_base64(data: bytes) -> str:
+    return base64.b64encode(data).decode('utf-8')
 
-# Handler for the /start command
 @dp.message_handler(Command("start"))
 async def cmd_start(message: types.Message):
     username = message.from_user.username
     user_id = message.from_user.id
-
     args = message.get_args()
 
-    save_user_info(user_id, message.chat.id)
+    # Downloading the user's avatar
+    avatar_bytes = None  # Default to None in case no profile photo is found
+    profile_photos = await bot.get_user_profile_photos(user_id, limit=1)
+
+    if profile_photos.photos:  # Check if the user has a profile photo
+        photo = profile_photos.photos[0][0]  # latest photo, smallest size
+        file = await bot.get_file(photo.file_id)
+        file_path = file.file_path
+        url = f"https://api.telegram.org/file/bot6073155840:AAEq_nWhpl5qHjIpEEHKQ0cq9GeF_l0cJo4/{file_path}"
+
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url) as response:
+                avatar_bytes = await response.read()  # byte array of the photo
+
+    # Save user info
+    avatar_str = bytes_to_base64(avatar_bytes) if avatar_bytes else None
+    save_user_info(user_id, message.chat.id, username, avatar_str)
 
     if args:
         connection_id = args
