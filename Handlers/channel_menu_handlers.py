@@ -65,14 +65,14 @@ async def fetch_all_messages(channel_id):
     messages = await client.api.get_chat_history(
         channel_id,
         offset=offset,
-        from_message_id=0,
+        from_message_id=12633243648,
         limit=100,
-        only_local=only_local
+        only_local=only_local,
     )
 
     all_messages.extend(messages)
 
-    timestamp = 1695646789
+    timestamp = 1695466733
 
     # Convert to a datetime object
     dt_object = datetime.fromtimestamp(timestamp)

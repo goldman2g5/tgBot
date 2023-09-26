@@ -58,7 +58,7 @@ async def cmd_start(message: types.Message):
 
     # Save user info
     avatar_str = bytes_to_base64(avatar_bytes) if avatar_bytes else None
-    save_user_info(user_id, message.chat.id, username, avatar_str)
+    # save_user_info(user_id, message.chat.id, username, avatar_str)
 
     if args:
         connection_id = args
