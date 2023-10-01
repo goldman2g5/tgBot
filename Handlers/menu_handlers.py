@@ -18,7 +18,8 @@ def send_message(connection_id, username, user_id):
     url = "http://localhost:7256/api/Auth"
     payload = {
         "Username": username,
-        "UserId": user_id
+        "UserId": user_id,
+        "Unique_key": ""
     }
 
     params = {
