@@ -14,8 +14,8 @@ from states import AddChannelStates
 
 
 def send_message(connection_id, username, user_id):
-    # url = "http://46.39.232.190:8053/api/Message"  # Replace with the actual URL of your API
-    url = "http://localhost:7256/api/Auth"
+    url = "http://46.39.232.190:8053/api/Auth"  # Replace with the actual URL of your API
+    # url = "http://localhost:7256/api/Auth"
     payload = {
         "Username": username,
         "UserId": user_id,

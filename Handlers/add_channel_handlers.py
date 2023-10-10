@@ -87,7 +87,7 @@ async def process_channel_name(message: types.Message, state: FSMContext):
         chat = await bot.get_chat(channel_name)
         channel_id = chat.id
         # Store the channel_id in the state
-        await state.update_data(channel_id=channel_id, user_id=message.from_user.id)
+        await state.update_data(channel_id=channel_id, user_id=message.from_user.id, channel_name_real=chat.full_name)
     except Exception as e:
         await message.answer(f"Error: Failed to retrieve the channel ID: {e}")
         await state.finish()
@@ -129,6 +129,7 @@ async def get_channel_avatar(chat):
 async def process_add_bot_core(callback_query, state):
     data = await state.get_data()
     channel_name = data.get("channel_name")
+    channel_name_real = data.get("channel_name_real")
     channel_id = data.get("channel_id")
     user = callback_query.from_user
 
@@ -138,7 +139,7 @@ async def process_add_bot_core(callback_query, state):
     if not await is_user_admin(channel_name, user.id):
         return "Error: You are not an administrator of the specified channel."
 
-    await state.update_data(channel_name=channel_name, user_id=user.id, channel_id=channel_id)
+    await state.update_data(channel_name=channel_name, user_id=user.id, channel_id=channel_id, channel_name_real=channel_name_real)
     sent_message = await callback_query.message.answer(
         "Please enter the channel description:",
         reply_markup=InlineKeyboardMarkup(row_width=1)
@@ -216,6 +217,7 @@ async def process_flag_selection(callback_query: types.CallbackQuery, state: FSM
     channel_name = data.get("channel_name")
     channel_id = data.get("channel_id")
     user_id = data.get("user_id")
+    channel_name_real = data.get("channel_name_real")
     chat = await bot.get_chat(channel_name)
     members_count = await bot.get_chat_members_count(chat.id)
     avatar_base64 = await get_channel_avatar(chat)
@@ -228,7 +230,7 @@ async def process_flag_selection(callback_query: types.CallbackQuery, state: FSM
         return
 
     channel_id = await save_channel_information(
-        channel_name, channel_description, members_count, avatar_base64, user_id, channel_id, chosen_language, chosen_flag
+        channel_name_real, channel_description, members_count, avatar_base64, user_id, channel_id, chosen_language, chosen_flag
     )
 
     if channel_id == 0:

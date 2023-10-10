@@ -18,72 +18,78 @@ from datetime import datetime, timedelta
 from aiogram.dispatcher.filters.state import StatesGroup, State
 
 
-# def remove_negative_100(n: int) -> int:
-#     s = str(n)
-#     prefix = "-100"
-#     if s.startswith(prefix):
-#         return int(s[len(prefix):])
-#     return n
-#
-# async def get_chat_statistics(chat_id):
-#     await client.stop()
-#
-#     await client.start()
-#
-#     me = await client.api.get_me()
-#     logging.info(f"Successfully logged in as {me.json()}")
-#
-#     chat_id = remove_negative_100(chat_id)
-#
-#     supergroup = await client.get_supergroup(supergroup_id=chat_id, force_update=True)
-#     print(supergroup.id)
-#
-#     stats_url = await client.api.get_supergroup_full_info(supergroup_id=supergroup.id)
-#
-#     print(stats_url)
-#
-#     await client.stop()
-#
-#
-#
-#     # stats = await client.api.get_chat(chat_id)
-#
-#     # logging.info(f"Statistics URL: {stats_url}")
-#
-#     # If you want to actually get the statistics content, you can make an HTTP request to the stats_url
+def remove_negative_100(n: int) -> int:
+    s = str(n)
+    prefix = "-100"
+    if s.startswith(prefix):
+        return int(s[len(prefix):])
+    return n
 
-async def fetch_all_messages(channel_id):
+async def get_chat_statistics(chat_id):
+    await client.stop()
+
+    await client.start()
+
+    me = await client.api.get_me()
+    logging.info(f"Successfully logged in as {me.json()}")
+
+    chat_id = remove_negative_100(chat_id)
+
+    supergroup = await client.get_supergroup(supergroup_id=chat_id, force_update=True)
+    print(supergroup.id)
+
+    stats_url = await client.api.get_supergroup_full_info(supergroup_id=supergroup.id)
+
+    print(stats_url)
+
+    await client.stop()
+
+
+
+    # stats = await client.api.get_chat(chat_id)
+
+    # logging.info(f"Statistics URL: {stats_url}")
+
+    # If you want to actually get the statistics content, you can make an HTTP request to the stats_url
+
+
+async def get_last_message(channel_id):
+    # Assuming client.api.get_chat_history is a correct method, though I think you meant bot.get_chat_history
     await client.start()
     me = await client.api.get_me()
     logging.info(f"Successfully logged in as {me.json()}")
 
-    all_messages = []
-    last_message_id = 0
-    offset = 0  # Initialize offset
-    only_local = False  # Initialize only_local flag
-
+    # Fetching messages
     messages = await client.api.get_chat_history(
         channel_id,
-        offset=offset,
-        from_message_id=12633243648,
-        limit=100,
-        only_local=only_local,
+        from_message_id=0,  # Let's start from the latest message
+        offset=0,
+        limit=1,  # Only retrieve one message (the latest)
+        only_local=False,
     )
 
-    all_messages.extend(messages)
+    messages = messages.messages
 
-    timestamp = 1695466733
+    # Extract the last message
+    last_message = messages[-1]
 
-    # Convert to a datetime object
-    dt_object = datetime.fromtimestamp(timestamp)
+    # Get the message details
+    message_id = last_message.id
+    chat_id = last_message.chat_id
 
-    # Format the datetime object as a string in your desired format
-    formatted_time = dt_object.strftime('%Y-%m-%d %H:%M:%S')
+    # Converting Unix timestamp to human-readable format
+    date = datetime.utcfromtimestamp(last_message.date).strftime('%Y-%m-%d %H:%M:%S')
 
-    print(formatted_time)
+    caption_text = last_message.content
 
-    await client.stop()
-    return all_messages
+    print(last_message)
+
+    # Log details
+    print(f"Message ID: {message_id}")
+    print(f"Chat ID: {chat_id}")
+    print(f"Date: {date}")
+    print(f"Caption: {caption_text}")
+
 
 
 @dp.callback_query_handler(lambda c: c.data.startswith("channel_"))
@@ -97,7 +103,7 @@ async def channel_menu_handler(callback_query: types.CallbackQuery):
 
     print(chat.id)
 
-    all_messages = await fetch_all_messages(chatid)
+    all_messages = await get_last_message(chatid)
 
     print(all_messages)
 
