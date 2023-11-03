@@ -11,11 +11,12 @@ from api import *
 from bot import dp, bot
 from misc import open_menu
 from states import AddChannelStates
+from api import API_URL
 
 
 def send_message(connection_id, username, user_id):
-    url = "http://46.39.232.190:8053/api/Auth"  # Replace with the actual URL of your API
-    # url = "http://localhost:7256/api/Auth"
+    url = "http://46.39.232.190:8053/api/Auth"
+    # url = "https://localhost:7256/api/Auth"
     payload = {
         "Username": username,
         "UserId": user_id,
@@ -26,7 +27,7 @@ def send_message(connection_id, username, user_id):
         "connectionId": connection_id
     }
 
-    response = requests.post(url, json=payload, params=params)
+    response = requests.post(url, json=payload, params=params, verify=False)
 
     if response.status_code == 200:
         print("Message sent successfully")

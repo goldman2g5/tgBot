@@ -97,15 +97,15 @@ async def channel_menu_handler(callback_query: types.CallbackQuery):
     channel_id = int(callback_query.data.split("_")[1])
     channel_name = callback_query.data.split("_")[2]
 
-    chat = await bot.get_chat("@anima_shiza_autora")
-
-    chatid = chat.id
-
-    print(chat.id)
-
-    all_messages = await get_last_message(chatid)
-
-    print(all_messages)
+    # chat = await bot.get_chat("@anima_shiza_autora")
+    #
+    # chatid = chat.id
+    #
+    # print(chat.id)
+    #
+    # all_messages = await get_last_message(chatid)
+    #
+    # print(all_messages)
 
     # Create inline buttons for channel menu
     markup = InlineKeyboardMarkup(row_width=1)

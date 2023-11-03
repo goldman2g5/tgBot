@@ -4,7 +4,8 @@ from typing import List
 import aiohttp
 import requests
 
-API_URL = "http://localhost:7256/api"
+
+API_URL = "http://46.39.232.190:8053/api"
 
 # Configure logging settings
 logging.basicConfig(level=logging.INFO, filename="logs.log", filemode="w",
@@ -25,7 +26,7 @@ def save_user_info(user_id: int, chat_id: int, username: str, avatar: str):
 
     print(user)
 
-    response = requests.post(f"{API_URL}/User", json=user)
+    response = requests.post(f"{API_URL}/User", json=user, verify=False)
 
     if response.status_code != 201:
         logger.critical(f"Failed to save user info\nTelegramId: {user_id}\nChatId: {chat_id}\n{response.text}")
@@ -48,7 +49,7 @@ async def save_channel_information(channel_name: str, channel_description: str, 
         "flag": flag
     }
 
-    response = requests.post(api_url, json=data)
+    response = requests.post(api_url, json=data, verify=False)
     if response.status_code == 201:
         return response.json().get("id")
     else:
@@ -65,7 +66,7 @@ async def save_channel_access(user_id, channel_id):
         "channelId": int(channel_id) if channel_id is not None else None
     }
 
-    response = requests.post(api_url, json=data)
+    response = requests.post(api_url, json=data, verify=False)
     if response.status_code == 201:
         return True
     else:
@@ -77,7 +78,7 @@ async def save_channel_access(user_id, channel_id):
 # Function to retrieve user's channels from the API
 def get_user_channels(user_id: int) -> List[dict]:
     api_url = f"{API_URL}/Channel/ByUser/{user_id}"
-    response = requests.get(api_url)
+    response = requests.get(api_url, verify=False)
     if response.status_code == 200:
         return response.json()
     else:
@@ -87,7 +88,7 @@ def get_user_channels(user_id: int) -> List[dict]:
 # Retrieve the current notification status from the API
 def get_notification_status(channel_id):
     api_url = f"{API_URL}/Channel/{channel_id}"
-    response = requests.get(api_url)
+    response = requests.get(api_url, verify=False)
     if response.status_code == 404:
         return None  # Channel not found
 
@@ -104,7 +105,7 @@ def get_notification_status(channel_id):
 def toggle_notification_status(channel_id, new_notifications_enabled):
     api_toggle_url = f"{API_URL}/Channel/ToggleNotifications/{channel_id}"
     put_data = {"notifications": new_notifications_enabled}
-    response = requests.put(api_toggle_url, json=put_data)
+    response = requests.put(api_toggle_url, json=put_data, verify=False)
     return response.status_code == 204
 
 
@@ -113,7 +114,7 @@ async def bump_channel(channel_id: int):
     api_url = f"{API_URL}/Channel/Bump/{channel_id}"
 
     try:
-        response = requests.post(api_url)
+        response = requests.post(api_url, verify=False)
         return response
     except requests.exceptions.RequestException as e:
         # Handle exception (e.g., connection error)
@@ -125,7 +126,7 @@ async def bump_channel(channel_id: int):
 async def get_user_id_from_database(user_id: int):
     try:
         # Make a GET request to the API endpoint for retrieving user by Telegram ID
-        response = requests.get(f"{API_URL}/User/ByTelegramId/{user_id}")
+        response = requests.get(f"{API_URL}/User/ByTelegramId/{user_id}", verify=False)
         if response.status_code == 200:
             user_data = response.json()
             if user_data:
@@ -144,7 +145,7 @@ async def get_user_id_from_database(user_id: int):
 async def get_channel_id_from_database(channel_id: int):
     try:
         # Make a GET request to the API endpoint for retrieving channel by Telegram ID
-        response = requests.get(f"{API_URL}/Channel/ByTelegramId/{channel_id}")
+        response = requests.get(f"{API_URL}/Channel/ByTelegramId/{channel_id}", verify=False)
         if response.status_code == 200:
             channel_data = response.json()
             if channel_data:
@@ -163,7 +164,7 @@ def get_notifications():
     url = f"{API_URL}/Notifications"
 
     try:
-        response = requests.get(url)
+        response = requests.get(url, verify=False)
         response.raise_for_status()  # Raise an exception for non-2xx status codes
         notifications = response.json()
         return notifications
@@ -173,7 +174,7 @@ def get_notifications():
 
 
 async def get_tags():
-    response = requests.get(f"{API_URL}/Tags")
+    response = requests.get(f"{API_URL}/Tags", verify=False)
     if response.status_code == 200:
         tags_str = response.text.strip()
         tags = {tag: False for tag in tags_str.split(",")}
@@ -184,7 +185,7 @@ async def get_tags():
 
 async def get_channel_tags(channel_id: int):
     # Get all tags from the API
-    response = requests.get(f"{API_URL}/Tags")
+    response = requests.get(f"{API_URL}/Tags", verify=False)
     if response.status_code == 200:
         tags_str = response.text.strip()
         tags = {tag: False for tag in tags_str.split(",")}
@@ -192,7 +193,7 @@ async def get_channel_tags(channel_id: int):
         tags = {}
 
     # Get the channel's tags from the API
-    response = requests.get(f"{API_URL}/Channel/{channel_id}/Tags")
+    response = requests.get(f"{API_URL}/Channel/{channel_id}/Tags", verify=False)
     if response.status_code == 200:
         channel_tags = response.json()
         for tag in channel_tags:
@@ -210,7 +211,7 @@ def save_tags(channel_id: int, tags: dict):
     api_url = f"{API_URL}/Channel/{channel_id}/Tags"
     headers = {"Content-Type": "application/json"}  # Set the Content-Type header
     payload = json.dumps(selected_tags)  # Convert selected_tags to JSON
-    response = requests.put(api_url, data=payload, headers=headers)
+    response = requests.put(api_url, data=payload, headers=headers, verify=False)
     # Check the response status code
     if response.status_code == 204:
         print("Tags successfully sent to the API")
@@ -219,7 +220,7 @@ def save_tags(channel_id: int, tags: dict):
 
 
 def get_subscriptions_from_api():
-    response = requests.get(f'{API_URL}/Subscription')
+    response = requests.get(f'{API_URL}/Subscription', verify=False)
     if response.status_code == 200:
         return response.json()
     else:
@@ -231,7 +232,7 @@ def get_subscriptions_from_api():
 def subscribe_channel(channel_id, subtype_id):
     try:
         url = f"{API_URL}/Channel/Subscribe/{channel_id}?subtypeId={subtype_id}"
-        response = requests.post(url)
+        response = requests.post(url, verify=False)
 
         if response.status_code == 200:
             return True, "Successfully subscribed the channel!"
@@ -246,7 +247,7 @@ def subscribe_channel(channel_id, subtype_id):
 # Retrieve the current promo post status from the API
 def get_promo_post_status(channel_id):
     api_url = f"{API_URL}/Channel/{channel_id}"
-    response = requests.get(api_url)
+    response = requests.get(api_url, verify=False)
     if response.status_code == 404:
         return None  # Channel not found
 
@@ -263,7 +264,7 @@ def get_promo_post_status(channel_id):
 def toggle_promo_post_status(channel_id, new_promo_post_enabled):
     api_url = f"{API_URL}/Channel/TogglePromoPost/{channel_id}"
     put_data = {"notifications": new_promo_post_enabled}
-    response = requests.put(api_url, put_data)
+    response = requests.put(api_url, put_data, verify=False)
     return response.status_code == 204  # Return True if the API update was successful
 
 
@@ -274,7 +275,7 @@ def update_channel_flag(channel_id, new_flag):
     endpoint = f"{API_URL}/Channel/{channel_id}/flag"
 
     # Make the PUT request to update the flag
-    response = requests.put(endpoint, json={"flag": new_flag})
+    response = requests.put(endpoint, json={"flag": new_flag}, verify=False)
 
     # Check the response and handle errors
     if response.status_code == 204:
@@ -292,7 +293,7 @@ def update_channel_language(channel_id, new_language):
     endpoint = f"{API_URL}/Channel/{channel_id}/language"
 
     # Make the PUT request to update the language
-    response = requests.put(endpoint, json={"language": new_language})
+    response = requests.put(endpoint, json={"language": new_language}, verify=False)
 
     # Check the response and handle errors
     if response.status_code == 204:

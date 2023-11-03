@@ -2,8 +2,8 @@ import requests
 from aiogram import Dispatcher, types
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.interval import IntervalTrigger
-
 from Handlers.add_channel_handlers import *
+from api import API_URL
 
 # Initialize APScheduler scheduler
 scheduler = AsyncIOScheduler()
@@ -48,21 +48,21 @@ async def send_promo_post_notification(notification):
 async def fetch_notifications():
     try:
         # Fetch bump notifications from the API
-        response = requests.get('http://localhost:8053/api/Notification')
+        response = requests.get(f'{API_URL}/Notification')
         response.raise_for_status()
         bump_notifications = response.json()
         for notification in bump_notifications:
             await send_bump_notification(notification)
 
         # Fetch subscription notifications from the API
-        response = requests.get('http://localhost:8053/api/Subscription/CheckExpiredSubscriptions')
+        response = requests.get(f'{API_URL}/Subscription/CheckExpiredSubscriptions')
         response.raise_for_status()
         sub_notifications = response.json()
         for notification in sub_notifications:
             await send_sub_notification(notification)
 
         # Fetch promo posts from the API
-        response = requests.get('http://localhost:8053/api/Notification/GetPromoPosts')  # Replace with your endpoint
+        response = requests.get(f'{API_URL}/Notification/GetPromoPosts')  # Replace with your endpoint
         response.raise_for_status()
         promo_notifications = response.json()
         print(promo_notifications)
@@ -81,5 +81,5 @@ async def check_notifications():
 
 async def start_notification_service(dispatcher: Dispatcher):
     # Start the APScheduler scheduler
-    scheduler.add_job(check_notifications, IntervalTrigger(seconds=30))
+    # scheduler.add_job(check_notifications, IntervalTrigger(seconds=30))
     scheduler.start()
