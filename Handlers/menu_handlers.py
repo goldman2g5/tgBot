@@ -35,8 +35,10 @@ def send_message(connection_id, username, user_id):
         print("Failed to send message")
         print(response)
 
+
 def bytes_to_base64(data: bytes) -> str:
     return base64.b64encode(data).decode('utf-8')
+
 
 @dp.message_handler(Command("start"))
 async def cmd_start(message: types.Message):
@@ -75,9 +77,19 @@ async def cmd_start(message: types.Message):
     # Write user info to the database
 
     # Open the menu
-    markup = InlineKeyboardMarkup(row_width=1)
-    markup.add(InlineKeyboardButton("Add Channel", callback_data="add_channel"),
-               InlineKeyboardButton("Manage Channels", callback_data="manage_channels"))
+
+    isAdmin = True
+
+    if isAdmin:
+        markup = InlineKeyboardMarkup(row_width=1)
+        markup.add(InlineKeyboardButton("Add Channel", callback_data="add_channel"),
+                   InlineKeyboardButton("Manage Channels", callback_data="manage_channels"),
+                   InlineKeyboardButton("Repors", callback_data="add_channel"))
+    else:
+        markup = InlineKeyboardMarkup(row_width=1)
+        markup.add(InlineKeyboardButton("Add Channel", callback_data="add_channel"),
+                   InlineKeyboardButton("Manage Channels", callback_data="manage_channels"))
+
     await bot.send_message(message.chat.id, "Menu:", reply_markup=markup)
 
 

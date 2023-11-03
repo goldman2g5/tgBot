@@ -5,7 +5,8 @@ import aiohttp
 import requests
 
 
-API_URL = "http://46.39.232.190:8053/api"
+# API_URL = "http://46.39.232.190:8053/api"
+API_URL = "https://localhost:7256/api"
 
 # Configure logging settings
 logging.basicConfig(level=logging.INFO, filename="logs.log", filemode="w",
@@ -33,7 +34,7 @@ def save_user_info(user_id: int, chat_id: int, username: str, avatar: str):
 
 
 async def save_channel_information(channel_name: str, channel_description: str, members_count: int, avatar_base64: str,
-                                   user_id: int, channel_id: int, language: str, flag: str) -> int:
+                                   user_id: int, channel_id: int, language: str, flag: str, channel_url: str) -> int:
     # Write channel information to the database using the API
     api_url = f"{API_URL}/Channel"
     print(f"channel id - {channel_id}")
@@ -46,7 +47,8 @@ async def save_channel_information(channel_name: str, channel_description: str, 
         "user": user_id,
         "telegramId": channel_id,
         "language": language,
-        "flag": flag
+        "flag": flag,
+        "url": channel_url
     }
 
     response = requests.post(api_url, json=data, verify=False)

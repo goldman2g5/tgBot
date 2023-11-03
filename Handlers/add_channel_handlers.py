@@ -81,18 +81,6 @@ async def process_channel_name(message: types.Message, state: FSMContext):
     await update_message_ids(state, message.message_id)
     await update_message_ids(state, channel_name_message_id)
 
-    # Retrieve the channel ID using bot.get_chat
-    try:
-        print(channel_name)
-        chat = await bot.get_chat(channel_name)
-        channel_id = chat.id
-        # Store the channel_id in the state
-        await state.update_data(channel_id=channel_id, user_id=message.from_user.id, channel_name_real=chat.full_name)
-    except Exception as e:
-        await message.answer(f"Error: Failed to retrieve the channel ID: {e}")
-        await state.finish()
-        return
-
     # Create the "Add Bot" button and send the message
     markup = InlineKeyboardMarkup(row_width=1)
     markup.add(InlineKeyboardButton("Check", callback_data="add_bot"))
@@ -139,7 +127,12 @@ async def process_add_bot_core(callback_query, state):
     if not await is_user_admin(channel_name, user.id):
         return "Error: You are not an administrator of the specified channel."
 
-    await state.update_data(channel_name=channel_name, user_id=user.id, channel_id=channel_id, channel_name_real=channel_name_real)
+        # Retrieve the channel ID using bot.get_chat
+
+
+
+    await state.update_data(channel_name=channel_name, user_id=user.id, channel_id=channel_id,
+                            channel_name_real=channel_name_real)
     sent_message = await callback_query.message.answer(
         "Please enter the channel description:",
         reply_markup=InlineKeyboardMarkup(row_width=1)
@@ -182,6 +175,26 @@ async def process_channel_description_core(message, state):
 async def process_channel_description(message: types.Message, state: FSMContext):
     await process_channel_description_core(message, state)
 
+    data = await state.get_data()
+    channel_name = data.get("channel_name")
+    try:
+        chat = await bot.get_chat(channel_name)
+        channel_id = chat.id
+
+        # Check if the channel is public to construct the URL
+        if chat.username:
+            channel_url = f"https://t.me/{chat.username}"
+        else:
+            channel_url = "Private Channel"  # Handle private channels differently as they don't have URLs
+
+        # Store the channel_id and channel_url in the state
+        await state.update_data(channel_id=channel_id, user_id=message.from_user.id,
+                                channel_name_real=chat.full_name, channel_url=channel_url)
+    except Exception as e:
+        await message.answer(f"Error: Failed to retrieve the channel ID or URL: {e}")
+        await state.finish()
+        return
+
     markup = InlineKeyboardMarkup(row_width=1).add(
         InlineKeyboardButton("Ru", callback_data="language_ru"),
         InlineKeyboardButton("Eu", callback_data="language_en"),
@@ -218,6 +231,7 @@ async def process_flag_selection(callback_query: types.CallbackQuery, state: FSM
     channel_id = data.get("channel_id")
     user_id = data.get("user_id")
     channel_name_real = data.get("channel_name_real")
+    channel_url = data.get("channel_url")
     chat = await bot.get_chat(channel_name)
     members_count = await bot.get_chat_members_count(chat.id)
     avatar_base64 = await get_channel_avatar(chat)
@@ -230,7 +244,8 @@ async def process_flag_selection(callback_query: types.CallbackQuery, state: FSM
         return
 
     channel_id = await save_channel_information(
-        channel_name_real, channel_description, members_count, avatar_base64, user_id, channel_id, chosen_language, chosen_flag
+        channel_name_real, channel_description, members_count, avatar_base64, user_id, channel_id, chosen_language,
+        chosen_flag, channel_url
     )
 
     if channel_id == 0:
