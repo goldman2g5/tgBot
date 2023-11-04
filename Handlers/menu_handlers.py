@@ -78,13 +78,14 @@ async def cmd_start(message: types.Message):
 
     # Open the menu
 
-    isAdmin = True
+    isAdmin = await is_user_admin(user_id)
 
+    # Use isAdmin result to modify the markup
     if isAdmin:
         markup = InlineKeyboardMarkup(row_width=1)
         markup.add(InlineKeyboardButton("Add Channel", callback_data="add_channel"),
                    InlineKeyboardButton("Manage Channels", callback_data="manage_channels"),
-                   InlineKeyboardButton("Repors", callback_data="add_channel"))
+                   InlineKeyboardButton("Reports", callback_data="reports"))
     else:
         markup = InlineKeyboardMarkup(row_width=1)
         markup.add(InlineKeyboardButton("Add Channel", callback_data="add_channel"),
@@ -92,6 +93,44 @@ async def cmd_start(message: types.Message):
 
     await bot.send_message(message.chat.id, "Menu:", reply_markup=markup)
 
+
+@dp.callback_query_handler(lambda c: c.data == 'reports')
+async def display_reports(callback_query: types.CallbackQuery):
+    user_id = callback_query.from_user.id
+    api_url = f'https://localhost:7256/api/Auth/Reports/{user_id}'
+
+    async with aiohttp.ClientSession() as session:
+        async with session.get(api_url) as response:
+            if response.status == 200:
+                report_groups = await response.json()
+                markup = InlineKeyboardMarkup()
+
+                for group in report_groups:
+                    text = group["channelName"] + " - " + str(group["reportCount"]) + " Reports"
+                    callback_data = f'report_details_{group["channelId"]}'
+                    markup.add(InlineKeyboardButton(text, callback_data=callback_data))
+                markup.add(InlineKeyboardButton("Back to Menu", callback_data="back_to_menu"))
+                await bot.edit_message_text(
+                    "Select a report group to view:",
+                    chat_id=callback_query.message.chat.id,
+                    message_id=callback_query.message.message_id,
+                    reply_markup=markup
+                )
+            else:
+                await bot.send_message(
+                    callback_query.message.chat.id,
+                    "Could not fetch reports. Please try again later."
+                )
+
+    await callback_query.answer()
+
+# You will also need to handle the callback query when a button is pressed
+@dp.callback_query_handler(lambda c: c.data and c.data.startswith('report_details_'))
+async def handle_report_details(callback_query: types.CallbackQuery):
+    channel_id = callback_query.data.split('_')[-1]  # Extracting the channel ID from the callback data
+    # You can now fetch the report details using the channel ID and display them or handle them as needed
+    await callback_query.answer()  # Don't forget to answer the callback query
+    # Add further implementation for showing report details as per your requirements
 
 @dp.callback_query_handler(lambda c: c.data == 'remove_authorize_msg')
 async def remove_authorization_messages(callback_query: types.CallbackQuery):

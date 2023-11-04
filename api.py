@@ -304,3 +304,12 @@ def update_channel_language(channel_id, new_language):
         print("Channel not found.")
     else:
         print("Failed to update the language. Server responded with:", response.status_code, response.text)
+
+async def is_user_admin(telegram_id):
+    api_url = f'{API_URL}/Auth/IsAdmin/{telegram_id}'
+    async with aiohttp.ClientSession() as session:
+        async with session.get(api_url, ssl=False) as response:
+            if response.status == 200:
+                return await response.json()  # Assuming the API returns a JSON boolean
+            else:
+                return False  # Consider appropriate error handling
