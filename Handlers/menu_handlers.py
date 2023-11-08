@@ -100,7 +100,7 @@ async def display_reports(callback_query: types.CallbackQuery):
     api_url = f'https://localhost:7256/api/Auth/Reports/{user_id}'
 
     async with aiohttp.ClientSession() as session:
-        async with session.get(api_url) as response:
+        async with session.get(api_url, ssl=False) as response:
             if response.status == 200:
                 report_groups = await response.json()
                 markup = InlineKeyboardMarkup()
