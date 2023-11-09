@@ -1,11 +1,13 @@
 import asyncio
 import time
 
+import aiohttp
 import requests
 from aiogram import Dispatcher, types
+from aiogram.utils.callback_data import CallbackData
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.interval import IntervalTrigger
-from Handlers.add_channel_handlers import *
+from bot import bot, dp
 from api import API_URL
 
 # Initialize APScheduler scheduler
@@ -51,12 +53,19 @@ async def send_promo_post_notification(notification):
 async def send_report_notification(notification):
     reportee_name = notification['reporteeName']
     channel_name = notification['channelName']
+    report_id = notification['reportId']
+    print(f"{report_id} bebra")
     message = f"New report from {reportee_name} in channel {channel_name}."
+
+    markup = types.InlineKeyboardMarkup(row_width=1)
+    markup.add(
+        types.InlineKeyboardButton("View full info", callback_data=f"viewreport_{report_id}")
+    )
 
     # Send the notification to each target chat ID
     for telegram_chat_id in notification['targets']:
         if telegram_chat_id:  # Checking if chat ID is not null
-            await bot.send_message(telegram_chat_id, message)
+            await bot.send_message(telegram_chat_id, message, reply_markup=markup)
             time.sleep(1)
 
 
@@ -97,6 +106,73 @@ async def fetch_notifications():
         print(f"Error fetching notifications: {str(e)}")
 
 
+view_report_cb = CallbackData('report', 'action', 'id')
+
+
+@dp.callback_query_handler(lambda c: c.data and c.data.startswith('viewreport_'))
+async def handle_view_report(callback_query: types.CallbackQuery):
+    # Extract the report ID from the callback query data
+    _, report_id = callback_query.data.split('_')
+    report_id = int(report_id)  # Convert report_id to an integer if needed
+
+    async with aiohttp.ClientSession() as session:
+        # Assuming your API endpoint to get the report looks like this
+        report_url = f'{API_URL}/Auth/Report/{report_id}'
+        print(report_url)
+
+        # Make a GET request to your API endpoint
+        async with session.get(report_url, ssl=False) as response:
+            if response.status == 200:
+
+                report_data = await response.json()  # Get the report data as JSON
+                # Format a message to send to the user
+                report_details = (f"Channel Name: {report_data['channelName']}\n"
+                                  f"Channel URL: {report_data['channelWebUrl']}\n"
+                                  f"Reportee Name: {report_data['reporteeName']}\n"
+                                  f"Report Time: {report_data['reportTime']}\n"
+                                  f"Text: {report_data['text']}\n"
+                                  f"Reason: {report_data['reason']}\n")
+                # Prepare the inline keyboard markup
+                markup = types.InlineKeyboardMarkup()
+                markup.add(
+                    types.InlineKeyboardButton("Hide", callback_data=view_report_cb.new(action="hide", id=report_id)))
+                markup.add(
+                    types.InlineKeyboardButton("Skip", callback_data=view_report_cb.new(action="skip", id=report_id)))
+                markup.add(types.InlineKeyboardButton("Contact Owner",
+                                                      callback_data=view_report_cb.new(action="contact", id=report_id)))
+
+                # Send the report details to the user with inline buttons
+                await bot.send_message(callback_query.from_user.id, report_details, reply_markup=markup)
+            else:
+                # Send an error message if something goes wrong
+                await bot.send_message(callback_query.from_user.id, "Could not retrieve the report details.")
+
+                # Always answer the callback query
+            await callback_query.answer()
+
+    # Always answer the callback query, even if you do not send a message to the user
+    await callback_query.answer()
+
+
+# Handlers for the inline button actions
+@dp.callback_query_handler(view_report_cb.filter(action="hide"))
+async def handle_hide(callback_query: types.CallbackQuery, callback_data: dict):
+    # Implement hide logic
+    await callback_query.answer("Report hidden.")
+
+
+@dp.callback_query_handler(view_report_cb.filter(action="skip"))
+async def handle_skip(callback_query: types.CallbackQuery, callback_data: dict):
+    # Implement skip logic
+    await callback_query.answer("Report skipped.")
+
+
+@dp.callback_query_handler(view_report_cb.filter(action="contact"))
+async def handle_contact_owner(callback_query: types.CallbackQuery, callback_data: dict):
+    # Implement contact owner logic
+    await callback_query.answer("Contacting owner.")
+
+
 async def check_notifications():
     # Fetch notifications from the API
     await fetch_notifications()
@@ -104,5 +180,5 @@ async def check_notifications():
 
 async def start_notification_service(dispatcher: Dispatcher):
     # Start the APScheduler scheduler
-    scheduler.add_job(check_notifications, IntervalTrigger(seconds=30))
+    scheduler.add_job(check_notifications, IntervalTrigger(seconds=15))
     scheduler.start()
