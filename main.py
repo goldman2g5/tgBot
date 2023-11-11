@@ -3,6 +3,7 @@ import logging
 from Handlers.channel_menu_handlers import *
 from Handlers.menu_handlers import *
 from Handlers.add_channel_handlers import *
+from Handlers.AdminPanelHandlers import *
 from aiogram.utils import executor
 from notification_service import start_notification_service
 from bot import dp
