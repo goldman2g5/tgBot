@@ -113,5 +113,5 @@ async def check_notifications():
 
 async def start_notification_service(dispatcher: Dispatcher):
     # Start the APScheduler scheduler
-    scheduler.add_job(check_notifications, IntervalTrigger(seconds=15))
+    # scheduler.add_job(check_notifications, IntervalTrigger(seconds=15))
     scheduler.start()

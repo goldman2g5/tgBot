@@ -1,4 +1,7 @@
+import time
+
 from aiogram import types
+from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters import Command
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.utils.callback_data import CallbackData
@@ -74,7 +77,8 @@ async def cmd_reports(message: types.Message):
 
 
 @dp.callback_query_handler(lambda c: c.data == 'reports')
-async def display_reports(callback_query: types.CallbackQuery):
+async def display_reports(callback_query: types.CallbackQuery, state: FSMContext):
+    data = await state.get_data()
     user_id = callback_query.from_user.id
     api_url = f'https://localhost:7256/api/Auth/Reports/{user_id}'
 
@@ -95,6 +99,7 @@ async def display_reports(callback_query: types.CallbackQuery):
                     message_id=callback_query.message.message_id,
                     reply_markup=markup
                 )
+                await state.update_data(last_report_message_id=callback_query.message.message_id)
             else:
                 await bot.send_message(
                     callback_query.message.chat.id,
@@ -105,7 +110,7 @@ async def display_reports(callback_query: types.CallbackQuery):
 
 
 @dp.callback_query_handler(lambda c: c.data.startswith('group_details_'))
-async def view_report_group(callback_query: types.CallbackQuery):
+async def view_report_group(callback_query: types.CallbackQuery, state: FSMContext):
     channel_id = int(callback_query.data.split('_')[-1])
     user_id = callback_query.from_user.id
     api_url = f'{API_URL}/Auth/Reports/{user_id}'
@@ -135,6 +140,8 @@ async def view_report_group(callback_query: types.CallbackQuery):
                         message_id=callback_query.message.message_id,
                         reply_markup=markup
                     )
+                    await state.update_data(last_report_message_id=callback_query.message.message_id)
+                    await state.update_data(selected_channel_id=channel_id)
                 else:
                     await bot.send_message(
                         callback_query.message.chat.id,
@@ -148,6 +155,48 @@ async def view_report_group(callback_query: types.CallbackQuery):
 
     await callback_query.answer()
 
+async def refresh_reports_list(user_id, chat_id, state: FSMContext):
+    api_url = f'{API_URL}/Auth/Reports/{user_id}'
+    async with aiohttp.ClientSession() as session:
+        async with session.get(api_url, ssl=False) as response:
+            if response.status == 200:
+                report_groups = await response.json()
+
+                # Retrieve the selected channel ID and the message ID of the last report message from the state
+                data = await state.get_data()
+                channel_id = data.get('selected_channel_id')
+                last_report_message_id = data.get('last_report_message_id')
+
+                selected_group = next((group for group in report_groups if group["channelId"] == channel_id), None)
+
+                markup = InlineKeyboardMarkup()
+                markup.add(InlineKeyboardButton("Back to Reports", callback_data="reports"))
+
+                if selected_group and selected_group["reports"]:
+                    for report in selected_group["reports"]:
+                        text = f"Report by {report['reporteeName']} - {report['reportTime']}"
+                        callback_data = f'viewreport_{report["id"]}'
+                        markup.add(InlineKeyboardButton(text, callback_data=callback_data))
+
+                    await bot.edit_message_text(
+                        f"Reports for {selected_group['channelName']}:",
+                        chat_id=chat_id,
+                        message_id=last_report_message_id,
+                        reply_markup=markup
+                    )
+                else:
+                    # No reports found in the selected group
+                    await bot.edit_message_text(
+                        "No reports left in this group.",
+                        chat_id=chat_id,
+                        message_id=last_report_message_id,
+                        reply_markup=markup
+                    )
+            else:
+                await bot.send_message(
+                    chat_id,
+                    "Could not fetch report details. Please try again later."
+                )
 
 @dp.callback_query_handler(lambda c: c.data and c.data.startswith('viewreport_'))
 async def view_report_details(callback_query: types.CallbackQuery):
@@ -195,12 +244,50 @@ async def delete_bot_messages(chat_id, message_ids):
     for msg_id in message_ids:
         await bot.delete_message(chat_id, msg_id)
 
-@dp.callback_query_handler(lambda c: c.data and c.data.startswith('delete_'))
-async def handle_delete_request(callback_query: types.CallbackQuery):
-    report_id = int(callback_query.data.split('_')[1])
-    message_ids = []
 
-    message_ids.append(callback_query.message.message_id)
+async def perform_admin_action(action, telegram_id, report_id):
+    if action == 'Close':
+        url = f'{API_URL}/Auth/AdminCloseReport/{telegram_id}/{report_id}'
+    elif action == 'Delete':
+        url = f'{API_URL}/Auth/AdminDeleteChannel/{telegram_id}/{report_id}'
+    else:
+        return None
+
+    async with aiohttp.ClientSession() as session:
+        async with session.post(url, ssl=False) as response:
+            if response.status == 200:
+                return await response.text()
+            else:
+                return None
+
+
+@dp.callback_query_handler(lambda c: c.data and c.data.startswith('close_'))
+async def handle_close_request(callback_query: types.CallbackQuery, state: FSMContext):
+    report_id = int(callback_query.data.split('_')[1])
+    message_ids = [callback_query.message.message_id]
+
+    # Call the API to close the report
+    response = await perform_admin_action('Close', callback_query.from_user.id, report_id)
+    if response:
+        final_msg = await bot.send_message(callback_query.from_user.id, response)
+        message_ids.append(final_msg.message_id)
+    else:
+        error_msg = await bot.send_message(callback_query.from_user.id, "Failed to close the report")
+        message_ids.append(error_msg.message_id)
+
+    time.sleep(3)
+    await delete_bot_messages(callback_query.from_user.id, message_ids)
+
+    # Refresh the reports list
+    await refresh_reports_list(callback_query.from_user.id, callback_query.message.chat.id, state)
+
+    await callback_query.answer()
+
+
+@dp.callback_query_handler(lambda c: c.data and c.data.startswith('delete_'))
+async def handle_delete_request(callback_query: types.CallbackQuery, state: FSMContext):
+    report_id = int(callback_query.data.split('_')[1])
+    message_ids = [callback_query.message.message_id]
 
     confirmation_msg = await bot.send_message(callback_query.from_user.id,
                                               "Are you sure you want to delete the channel? Type 'y' for Yes or 'n' for No.")
@@ -210,8 +297,14 @@ async def handle_delete_request(callback_query: types.CallbackQuery):
     async def handle_confirmation_response(message: types.Message):
         message_ids.append(message.message_id)
         if message.text.lower() == 'y':
-            success_msg = await bot.send_message(message.from_user.id, "Channel deleted successfully.")
-            message_ids.append(success_msg.message_id)
+            # Call the API to delete the channel
+            response = await perform_admin_action('Delete', callback_query.from_user.id, report_id)
+            response_message = response if response else "Failed to delete the channel"
+            final_msg = await bot.send_message(message.from_user.id, response_message)
+            message_ids.append(final_msg.message_id)
+
+            # Refresh the reports list after deleting
+            await refresh_reports_list(callback_query.from_user.id, callback_query.message.chat.id, state)
         elif message.text.lower() == 'n':
             cancel_msg = await bot.send_message(message.from_user.id, "Channel deletion cancelled.")
             message_ids.append(cancel_msg.message_id)
@@ -219,46 +312,21 @@ async def handle_delete_request(callback_query: types.CallbackQuery):
             invalid_msg = await bot.send_message(message.from_user.id, "Invalid response. Please type 'y' or 'n'.")
             message_ids.append(invalid_msg.message_id)
 
+        time.sleep(3)
         await delete_bot_messages(callback_query.from_user.id, message_ids)
 
     await callback_query.answer()
 
-@dp.callback_query_handler(lambda c: c.data and c.data.startswith('close_'))
-async def handle_close_request(callback_query: types.CallbackQuery):
-    report_id = int(callback_query.data.split('_')[1])
-    message_ids = [callback_query.message.message_id]
-
-    # Placeholder action for closing the report
-    close_msg = await bot.send_message(callback_query.from_user.id, "Closing the report...")
-    message_ids.append(close_msg.message_id)
-
-    # Here, add your logic for closing the report
-
-    # Send a final message and add its ID to the list
-    final_msg = await bot.send_message(callback_query.from_user.id, "Report closed successfully.")
-    message_ids.append(final_msg.message_id)
-
-    # Delete all bot messages
-    await delete_bot_messages(callback_query.from_user.id, message_ids)
-
-    await callback_query.answer()
 
 @dp.callback_query_handler(lambda c: c.data and c.data.startswith('postpone_'))
 async def handle_postpone_request(callback_query: types.CallbackQuery):
     report_id = int(callback_query.data.split('_')[1])
     message_ids = [callback_query.message.message_id]
 
-    # Placeholder action for postponing the report
-    postpone_msg = await bot.send_message(callback_query.from_user.id, "Postponing the report...")
-    message_ids.append(postpone_msg.message_id)
-
-    # Here, add your logic for postponing the report
-
-    # Send a final message and add its ID to the list
     final_msg = await bot.send_message(callback_query.from_user.id, "Report postponed successfully.")
     message_ids.append(final_msg.message_id)
 
-    # Delete all bot messages
+    time.sleep(3)
     await delete_bot_messages(callback_query.from_user.id, message_ids)
 
     await callback_query.answer()
@@ -293,7 +361,6 @@ async def handle_view_report(callback_query: types.CallbackQuery):
     async with aiohttp.ClientSession() as session:
         # Adjust your API endpoint to include the Telegram ID
         report_url = f'{API_URL}/Auth/Report/{report_id}/{telegram_id}'
-        print(report_url)
 
         # Make a GET request to your API endpoint
         async with session.get(report_url, ssl=False) as response:
