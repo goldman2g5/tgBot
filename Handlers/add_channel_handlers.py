@@ -5,19 +5,10 @@ import re
 from aiogram import types
 from aiogram.dispatcher import FSMContext
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-from api import save_channel_information, save_channel_access, get_channel_id_from_database, get_user_id_from_database
-from bot import dp, bot
-from misc import check_bot_in_channel, open_menu
-from states import AddChannelStates
 
-import base64
-import io
-from aiogram import types
-from aiogram.dispatcher import FSMContext
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-from api import save_channel_information, save_channel_access, get_channel_id_from_database, get_user_id_from_database
+from api import save_channel_information, save_channel_access, get_user_id_from_database
 from bot import dp, bot
-from misc import check_bot_in_channel, open_menu
+from misc import check_bot_in_channel
 from states import AddChannelStates
 
 

@@ -2,7 +2,6 @@ from aiogram import types
 from aiogram.dispatcher.filters import Command
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.utils.callback_data import CallbackData
-
 from api import *
 from bot import dp, bot
 
@@ -50,6 +49,30 @@ async def cmd_admin(message: types.Message):
     await bot.send_message(message.chat.id, "Admin Menu:", reply_markup=markup)
 
 
+@dp.message_handler(Command("reports"))
+async def cmd_reports(message: types.Message):
+    user_id = message.from_user.id
+    api_url = f'https://localhost:7256/api/Auth/Reports/{user_id}'
+
+    async with aiohttp.ClientSession() as session:
+        async with session.get(api_url, ssl=False) as response:
+            if response.status == 200:
+                report_groups = await response.json()
+                markup = InlineKeyboardMarkup()
+
+                for group in report_groups:
+                    text = f"{group['channelName']} - {group['reportCount']} Reports"
+                    callback_data = f'group_details_{group["channelId"]}'
+                    markup.add(InlineKeyboardButton(text, callback_data=callback_data))
+                markup.add(InlineKeyboardButton("Back to Menu", callback_data="back_to_menu"))
+                await message.answer(
+                    "Select a report group to view:",
+                    reply_markup=markup
+                )
+            else:
+                await message.answer("Could not fetch reports. Please try again later.")
+
+
 @dp.callback_query_handler(lambda c: c.data == 'reports')
 async def display_reports(callback_query: types.CallbackQuery):
     user_id = callback_query.from_user.id
@@ -87,6 +110,8 @@ async def view_report_group(callback_query: types.CallbackQuery):
     user_id = callback_query.from_user.id
     api_url = f'{API_URL}/Auth/Reports/{user_id}'
 
+    is_admin = await is_user_admin(user_id)
+
     async with aiohttp.ClientSession() as session:
         async with session.get(api_url, ssl=False) as response:
             if response.status == 200:
@@ -97,10 +122,12 @@ async def view_report_group(callback_query: types.CallbackQuery):
                     markup = InlineKeyboardMarkup()
                     for report in selected_group["reports"]:
                         text = f"Report by {report['reporteeName']} - {report['reportTime']}"
-                        callback_data = f'viewreport_{report["id"]}_admin'
+                        callback_data = f'viewreport_{report["id"]}'
+                        if is_admin:
+                            callback_data += '_admin'
                         markup.add(InlineKeyboardButton(text, callback_data=callback_data))
 
-                    markup.add(InlineKeyboardButton("Back to Reports", callback_data="back_to_reports"))
+                    markup.add(InlineKeyboardButton("Back to Reports", callback_data="reports"))
 
                     await bot.edit_message_text(
                         f"Reports for {selected_group['channelName']}:",
@@ -157,9 +184,82 @@ async def view_report_details(callback_query: types.CallbackQuery):
                         types.InlineKeyboardButton("Skip",
                                                    callback_data=view_report_cb.new(action="skip", id=report_id)))
 
-                await bot.send_message(callback_query.from_user.id, report_details, reply_markup=markup)
+                report_msg = await bot.send_message(callback_query.from_user.id, report_details, reply_markup=markup)
             else:
                 await bot.send_message(callback_query.from_user.id, "Could not retrieve the report details.")
+
+    await callback_query.answer()
+
+
+async def delete_bot_messages(chat_id, message_ids):
+    for msg_id in message_ids:
+        await bot.delete_message(chat_id, msg_id)
+
+@dp.callback_query_handler(lambda c: c.data and c.data.startswith('delete_'))
+async def handle_delete_request(callback_query: types.CallbackQuery):
+    report_id = int(callback_query.data.split('_')[1])
+    message_ids = []
+
+    message_ids.append(callback_query.message.message_id)
+
+    confirmation_msg = await bot.send_message(callback_query.from_user.id,
+                                              "Are you sure you want to delete the channel? Type 'y' for Yes or 'n' for No.")
+    message_ids.append(confirmation_msg.message_id)
+
+    @dp.message_handler()
+    async def handle_confirmation_response(message: types.Message):
+        message_ids.append(message.message_id)
+        if message.text.lower() == 'y':
+            success_msg = await bot.send_message(message.from_user.id, "Channel deleted successfully.")
+            message_ids.append(success_msg.message_id)
+        elif message.text.lower() == 'n':
+            cancel_msg = await bot.send_message(message.from_user.id, "Channel deletion cancelled.")
+            message_ids.append(cancel_msg.message_id)
+        else:
+            invalid_msg = await bot.send_message(message.from_user.id, "Invalid response. Please type 'y' or 'n'.")
+            message_ids.append(invalid_msg.message_id)
+
+        await delete_bot_messages(callback_query.from_user.id, message_ids)
+
+    await callback_query.answer()
+
+@dp.callback_query_handler(lambda c: c.data and c.data.startswith('close_'))
+async def handle_close_request(callback_query: types.CallbackQuery):
+    report_id = int(callback_query.data.split('_')[1])
+    message_ids = [callback_query.message.message_id]
+
+    # Placeholder action for closing the report
+    close_msg = await bot.send_message(callback_query.from_user.id, "Closing the report...")
+    message_ids.append(close_msg.message_id)
+
+    # Here, add your logic for closing the report
+
+    # Send a final message and add its ID to the list
+    final_msg = await bot.send_message(callback_query.from_user.id, "Report closed successfully.")
+    message_ids.append(final_msg.message_id)
+
+    # Delete all bot messages
+    await delete_bot_messages(callback_query.from_user.id, message_ids)
+
+    await callback_query.answer()
+
+@dp.callback_query_handler(lambda c: c.data and c.data.startswith('postpone_'))
+async def handle_postpone_request(callback_query: types.CallbackQuery):
+    report_id = int(callback_query.data.split('_')[1])
+    message_ids = [callback_query.message.message_id]
+
+    # Placeholder action for postponing the report
+    postpone_msg = await bot.send_message(callback_query.from_user.id, "Postponing the report...")
+    message_ids.append(postpone_msg.message_id)
+
+    # Here, add your logic for postponing the report
+
+    # Send a final message and add its ID to the list
+    final_msg = await bot.send_message(callback_query.from_user.id, "Report postponed successfully.")
+    message_ids.append(final_msg.message_id)
+
+    # Delete all bot messages
+    await delete_bot_messages(callback_query.from_user.id, message_ids)
 
     await callback_query.answer()
 

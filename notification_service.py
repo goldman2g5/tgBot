@@ -93,12 +93,12 @@ async def fetch_notifications():
         for notification in promo_notifications:
             await send_promo_post_notification(notification)
 
-            # Fetch report notifications from the API
-        response = requests.get(f'{API_URL}/Notification/GetReportNotifications', verify=False)
-        response.raise_for_status()
-        report_notifications = response.json()
-        for notification in report_notifications:
-            await send_report_notification(notification)
+        # Fetch report notifications from the API
+        #response = requests.get(f'{API_URL}/Notification/GetReportNotifications', verify=False)
+        #response.raise_for_status()
+        #report_notifications = response.json()
+        #for notification in report_notifications:
+            #await send_report_notification(notification)
 
 
     except requests.RequestException as e:
