@@ -155,6 +155,7 @@ async def view_report_group(callback_query: types.CallbackQuery, state: FSMConte
 
     await callback_query.answer()
 
+
 async def refresh_reports_list(user_id, chat_id, state: FSMContext):
     api_url = f'{API_URL}/Auth/Reports/{user_id}'
     async with aiohttp.ClientSession() as session:
@@ -197,6 +198,7 @@ async def refresh_reports_list(user_id, chat_id, state: FSMContext):
                     chat_id,
                     "Could not fetch report details. Please try again later."
                 )
+
 
 @dp.callback_query_handler(lambda c: c.data and c.data.startswith('viewreport_'))
 async def view_report_details(callback_query: types.CallbackQuery):
@@ -332,13 +334,34 @@ async def handle_postpone_request(callback_query: types.CallbackQuery):
     await callback_query.answer()
 
 
-# You will also need to handle the callback query when a button is pressed
-@dp.callback_query_handler(lambda c: c.data and c.data.startswith('report_details_'))
-async def handle_report_details(callback_query: types.CallbackQuery):
-    channel_id = callback_query.data.split('_')[-1]  # Extracting the channel ID from the callback data
-    # You can now fetch the report details using the channel ID and display them or handle them as needed
-    await callback_query.answer()  # Don't forget to answer the callback query
-    # Add further implementation for showing report details as per your requirements
+@dp.callback_query_handler(lambda c: c.data and c.data.startswith('contact_'))
+async def handle_contact_owner(callback_query: types.CallbackQuery):
+    report_id = int(callback_query.data.split('_')[1])
+    telegram_id = callback_query.from_user.id
+    report_url = f'{API_URL}/Auth/Report/{report_id}/{telegram_id}'
+    print(report_url)
+
+    async with aiohttp.ClientSession() as session:
+        async with session.get(report_url, ssl=False) as response:
+            if response.status == 200:
+                report_data = await response.json()
+                channel_owner_chat_id = report_data['userTelegramChatId']  # Get the channel owner's chat ID
+                print(channel_owner_chat_id)
+                # Send a notification to the channel owner
+                notification_message = f"You have a new contact request regarding a report on your channel."
+                await bot.send_message(channel_owner_chat_id, notification_message)
+
+                # Confirmation message to the admin
+                final_msg = await bot.send_message(callback_query.from_user.id, "Notification to channel's owner sent.")
+            else:
+                final_msg = await bot.send_message(callback_query.from_user.id, "Could not retrieve the report details or contact the channel owner.")
+
+    # Optionally delete messages after some time
+    message_ids = [callback_query.message.message_id, final_msg.message_id]
+    time.sleep(3)
+    await delete_bot_messages(callback_query.from_user.id, message_ids)
+
+    await callback_query.answer()
 
 
 @dp.callback_query_handler(lambda c: c.data == 'remove_authorize_msg')
@@ -426,9 +449,3 @@ async def handle_skip(callback_query: types.CallbackQuery, callback_data: dict):
                                          message_id=callback_query.message.message_id)
             else:
                 await callback_query.answer("Failed to close report.")
-
-
-@dp.callback_query_handler(view_report_cb.filter(action="contact"))
-async def handle_contact_owner(callback_query: types.CallbackQuery, callback_data: dict):
-    # Implement contact owner logic
-    await callback_query.answer("Contacting owner.")
