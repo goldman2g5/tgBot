@@ -3,6 +3,7 @@ import time
 from aiogram import types
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters import Command
+from aiogram.dispatcher.filters.state import StatesGroup, State
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.utils.callback_data import CallbackData
 from api import *
@@ -334,34 +335,50 @@ async def handle_postpone_request(callback_query: types.CallbackQuery):
     await callback_query.answer()
 
 
+# State for handling custom message
+class ContactForm(StatesGroup):
+    custom_message = State()
+
+
 @dp.callback_query_handler(lambda c: c.data and c.data.startswith('contact_'))
 async def handle_contact_owner(callback_query: types.CallbackQuery):
     report_id = int(callback_query.data.split('_')[1])
     telegram_id = callback_query.from_user.id
     report_url = f'{API_URL}/Auth/Report/{report_id}/{telegram_id}'
-    print(report_url)
 
     async with aiohttp.ClientSession() as session:
         async with session.get(report_url, ssl=False) as response:
             if response.status == 200:
                 report_data = await response.json()
-                channel_owner_chat_id = report_data['userTelegramChatId']  # Get the channel owner's chat ID
-                print(channel_owner_chat_id)
-                # Send a notification to the channel owner
-                notification_message = f"You have a new contact request regarding a report on your channel."
-                await bot.send_message(channel_owner_chat_id, notification_message)
+                channel_owner_chat_id = report_data['userTelegramChatId']
+                async with dp.current_state(chat=callback_query.from_user.id,
+                                            user=callback_query.from_user.id).proxy() as data:
+                    data['channel_owner_chat_id'] = channel_owner_chat_id
 
-                # Confirmation message to the admin
-                final_msg = await bot.send_message(callback_query.from_user.id, "Notification to channel's owner sent.")
+                # Transition to custom message state
+                await ContactForm.custom_message.set()
+                await bot.send_message(callback_query.from_user.id,
+                                       "Please enter your custom message for the channel owner:")
             else:
-                final_msg = await bot.send_message(callback_query.from_user.id, "Could not retrieve the report details or contact the channel owner.")
+                await bot.send_message(callback_query.from_user.id,
+                                       "Could not retrieve the report details or contact the channel owner.")
 
-    # Optionally delete messages after some time
-    message_ids = [callback_query.message.message_id, final_msg.message_id]
-    time.sleep(3)
-    await delete_bot_messages(callback_query.from_user.id, message_ids)
 
-    await callback_query.answer()
+@dp.message_handler(state=ContactForm.custom_message)
+async def process_custom_message(message: types.Message, state: FSMContext):
+    custom_message = message.text
+
+    async with state.proxy() as data:
+        channel_owner_chat_id = data['channel_owner_chat_id']
+
+    # Send custom message to the channel owner
+    await bot.send_message(channel_owner_chat_id, custom_message)
+
+    # Clear the state
+    await state.finish()
+
+    # Send confirmation to the admin
+    await message.reply("Notification to channel's owner sent.")
 
 
 @dp.callback_query_handler(lambda c: c.data == 'remove_authorize_msg')
