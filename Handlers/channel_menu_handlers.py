@@ -782,7 +782,7 @@ async def process_bump_button(callback_query: types.CallbackQuery):
         if response.status_code == 204:
             await callback_query.answer("Channel bumped successfully.")
         elif response.status_code == 400:
-            time_left = response.headers.get("X-TimeLeft")
+            time_left = response.default_headers.get("X-TimeLeft")
             if time_left:
                 time_left = int(time_left)
                 duration = timedelta(seconds=time_left)

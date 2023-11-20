@@ -11,7 +11,7 @@ from api import *
 from bot import dp, bot
 from misc import open_menu
 from states import AddChannelStates
-from api import API_URL
+from api import API_URL, default_headers
 
 
 def send_message(connection_id, username, user_id):
@@ -27,7 +27,7 @@ def send_message(connection_id, username, user_id):
         "connectionId": connection_id
     }
 
-    response = requests.post(url, json=payload, params=params, verify=False)
+    response = requests.post(url, json=payload, params=params, verify=False, headers=default_headers)
 
     if response.status_code == 200:
         print("Message sent successfully")
