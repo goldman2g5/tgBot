@@ -19,7 +19,7 @@ client = Client(
     api_id=API_ID,
     api_hash=API_HASH,
     phone_number=PHONE_NUMBER,
-    library_path='C:/td/tdlib/bin/tdjson.dll'
+    library_path='C:/Users/Timar/td/tdlib/bin/tdjson.dll'
 )
 
 # Initialize the bot and dispatcher
