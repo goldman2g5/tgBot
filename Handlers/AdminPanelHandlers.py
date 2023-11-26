@@ -60,6 +60,7 @@ async def cmd_reports(message: types.Message):
 
     async with aiohttp.ClientSession() as session:
         async with session.get(api_url, ssl=False) as response:
+            print(response.status)
             if response.status == 200:
                 report_groups = await response.json()
                 markup = InlineKeyboardMarkup()
@@ -85,6 +86,7 @@ async def display_reports(callback_query: types.CallbackQuery, state: FSMContext
 
     async with aiohttp.ClientSession() as session:
         async with session.get(api_url, ssl=False) as response:
+            print(response.status)
             if response.status == 200:
                 report_groups = await response.json()
                 markup = InlineKeyboardMarkup()
@@ -202,7 +204,8 @@ async def refresh_reports_list(user_id, chat_id, state: FSMContext):
 
 
 @dp.callback_query_handler(lambda c: c.data and c.data.startswith('viewreport_'))
-async def view_report_details(callback_query: types.CallbackQuery):
+async def view_report_details(callback_query: types.CallbackQuery, state:FSMContext):
+    data = await state.get_data()
     parts = callback_query.data.split('_')
     report_id = int(parts[1])  # Convert report_id to an integer
     is_admin_view = len(parts) > 2 and parts[2] == 'admin'  # Check if it's an admin view
@@ -211,9 +214,12 @@ async def view_report_details(callback_query: types.CallbackQuery):
     report_url = f'{API_URL}/Auth/Report/{report_id}/{telegram_id}'
 
     async with aiohttp.ClientSession() as session:
+
         async with session.get(report_url, ssl=False) as response:
             if response.status == 200:
+
                 report_data = await response.json()
+                print(report_data)
                 report_details = (f"Channel Name: {report_data['channelName']}\n"
                                   f"Channel URL: {report_data['channelWebUrl']}\n"
                                   f"Reportee Name: {report_data['reporteeName']}\n"
@@ -221,6 +227,11 @@ async def view_report_details(callback_query: types.CallbackQuery):
                                   f"Text: {report_data['text']}\n"
                                   f"Reason: {report_data['reason']}\n"
                                   f"Status: {report_data['status']}\n")
+                channelid = report_data['channelId']
+                userid = await get_user_id_from_database(telegram_id)
+
+                await state.update_data(last_report_message_id=callback_query.message.message_id)
+                await state.update_data(channelId=channelid, userId=userid, channel_name=report_data['channelName'])
 
                 markup = types.InlineKeyboardMarkup()
                 if is_admin_view:
@@ -241,7 +252,6 @@ async def view_report_details(callback_query: types.CallbackQuery):
                 await bot.send_message(callback_query.from_user.id, "Could not retrieve the report details.")
 
     await callback_query.answer()
-
 
 async def delete_bot_messages(chat_id, message_ids):
     for msg_id in message_ids:
@@ -370,9 +380,31 @@ async def process_custom_message(message: types.Message, state: FSMContext):
 
     async with state.proxy() as data:
         channel_owner_chat_id = data['channel_owner_chat_id']
+        channel_id = data['channelId']
+        userid = data['userId']
+        channel_name = data['channel_name']
 
     # Send custom message to the channel owner
     await bot.send_message(channel_owner_chat_id, custom_message)
+
+    notification_data = {
+        'channelid': channel_id,
+        'content': f"Сообщение от администратора для канала {channel_name}: " + custom_message,
+        'typeid': 2,
+        'userid': userid
+    }
+    print(notification_data)
+    # Make the request to create a new notification
+    async with aiohttp.ClientSession() as session:
+        async with session.post('https://localhost:7256/api/Notification/CreateNotification',
+                                json=notification_data, ssl=False) as response:
+            if response.status == 200:
+
+                pass
+            else:
+                ugabuga = await response.json()
+                await bot.send_message(message.from_user.id, f"Could not create notification {response.status} {ugabuga}")
+                pass
 
     # Clear the state
     await state.finish()
@@ -388,50 +420,6 @@ async def remove_authorization_messages(callback_query: types.CallbackQuery):
 
 
 view_report_cb = CallbackData('report', 'action', 'id')
-
-
-@dp.callback_query_handler(lambda c: c.data and c.data.startswith('viewreport_'))
-async def handle_view_report(callback_query: types.CallbackQuery):
-    # Extract the report ID from the callback query data
-    _, report_id = callback_query.data.split('_')
-    report_id = int(report_id)  # Convert report_id to an integer if needed
-
-    telegram_id = callback_query.from_user.id
-
-    async with aiohttp.ClientSession() as session:
-        # Adjust your API endpoint to include the Telegram ID
-        report_url = f'{API_URL}/Auth/Report/{report_id}/{telegram_id}'
-
-        # Make a GET request to your API endpoint
-        async with session.get(report_url, ssl=False) as response:
-            if response.status == 200:
-
-                report_data = await response.json()  # Get the report data as JSON
-                # Format a message to send to the user
-                report_details = (f"Channel Name: {report_data['channelName']}\n"
-                                  f"Channel URL: {report_data['channelWebUrl']}\n"
-                                  f"Reportee Name: {report_data['reporteeName']}\n"
-                                  f"Report Time: {report_data['reportTime']}\n"
-                                  f"Text: {report_data['text']}\n"
-                                  f"Reason: {report_data['reason']}\n")
-                # Prepare the inline keyboard markup
-                markup = types.InlineKeyboardMarkup()
-                markup.add(
-                    types.InlineKeyboardButton("Hide", callback_data=view_report_cb.new(action="hide", id=report_id)))
-                markup.add(
-                    types.InlineKeyboardButton("Skip", callback_data=view_report_cb.new(action="skip", id=report_id)))
-
-                # Send the report details to the user with inline buttons
-                await bot.send_message(callback_query.from_user.id, report_details, reply_markup=markup)
-            else:
-                # Send an error message if something goes wrong
-                await bot.send_message(callback_query.from_user.id, "Could not retrieve the report details.")
-
-                # Always answer the callback query
-            await callback_query.answer()
-
-    # Always answer the callback query, even if you do not send a message to the user
-    await callback_query.answer()
 
 
 @dp.callback_query_handler(view_report_cb.filter(action="hide"))
