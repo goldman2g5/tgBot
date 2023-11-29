@@ -4,11 +4,9 @@ from typing import List
 import aiohttp
 import requests
 
-
 # API_URL = "http://46.39.232.190:8053/api"
-API_URL = "https://localhost:7256/api"
+API_URL = "http://188.72.77.38:1488/api"
 API_KEY = "7bdf1ca44d84484c9864c06c0aedc1beb740909b02e4404ebafd381db897e1a5387567f8b42f47c7b5192eac60547460e0003c11fd804d1a966a30eacd939a3acaa9a352797f436aad6cd14f27517554"
-
 
 default_headers = {"X-API-KEY": API_KEY}
 
@@ -309,6 +307,7 @@ def update_channel_language(channel_id, new_language):
     else:
         print("Failed to update the language. Server responded with:", response.status_code, response.text)
 
+
 async def is_user_admin(telegram_id):
     api_url = f'{API_URL}/Auth/IsAdmin/{telegram_id}'
     async with aiohttp.ClientSession(headers=default_headers) as session:
@@ -317,3 +316,64 @@ async def is_user_admin(telegram_id):
                 return await response.json()  # Assuming the API returns a JSON boolean
             else:
                 return False  # Consider appropriate error handling
+
+
+def updateChannelDetails(channel_id, promo_post_time, promo_post_interval):
+    try:
+        payload = {
+            'PromoPostTime': promo_post_time,
+            'PromoPostInterval': promo_post_interval
+        }
+
+        response = requests.put(
+            f"http://localhost:8053/api/Channel/UpdatePromoPostDetails/{channel_id}",
+            json=payload, verify=False, headers=default_headers
+        )
+
+        response.raise_for_status()
+        print(response.status_code)
+        print(response)
+        if response.status_code == 200:
+            return True
+        else:
+            return False
+    except requests.RequestException:
+        return False
+
+
+def getChannelById(channel_id):
+    try:
+        response = requests.get(f"https://localhost:7256/api/Channel/{channel_id}", verify=False, headers=default_headers)
+        print(response)
+        response.raise_for_status()
+        return response.json()
+    except requests.RequestException:
+        return None
+
+# async def get_user_notifications(telegram_id):
+#     """
+#     Function to get the notification settings for a specific user by their Telegram ID.
+#
+#     :param telegram_id: The Telegram ID of the user.
+#     :return: A dictionary with notification types and their enabled/disabled status.
+#     """
+#     url = f"{API_URL}/Notification/{telegram_id}"
+#     async with aiohttp.ClientSession() as session:
+#         async with session.get(url,  headers=default_headers) as response:
+#             if response.status == 200:
+#                 return await response.json()
+#             else:
+#                 return None  # or handle the error as appropriate
+#
+# async def updateChannelNotifications(telegram_id, notification_settings):
+#     """
+#     Function to update the notification settings for a specific user by their Telegram ID.
+#
+#     :param telegram_id: The Telegram ID of the user.
+#     :param notification_settings: A dictionary with the new notification settings.
+#     :return: True if the update was successful, False otherwise.
+#     """
+#     url = f"{API_URL}/Notification/SetNotificationSettings/{telegram_id}"
+#     async with aiohttp.ClientSession() as session:
+#         async with session.post(url, json=notification_settings,  headers=default_headers) as response:
+#             return response.status == 200

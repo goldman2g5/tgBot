@@ -9,9 +9,7 @@ import requests
 from aiogram import types
 from aiogram.dispatcher import FSMContext
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ContentType
-from api import get_notification_status, toggle_notification_status, bump_channel, get_tags, save_tags, \
-    get_channel_tags, get_subscriptions_from_api, subscribe_channel, get_promo_post_status, toggle_promo_post_status, \
-    update_channel_language, update_channel_flag
+from api import *
 from bot import dp, bot, client
 from misc import open_menu, create_notifications_menu
 from datetime import datetime, timedelta
@@ -352,15 +350,6 @@ async def process_toggle_promo_post_button(callback_query: types.CallbackQuery, 
     )
 
 
-def getChannelById(channel_id):
-    try:
-        response = requests.get(f"http://localhost:8053/api/Channel/{channel_id}")
-        response.raise_for_status()
-        return response.json()
-    except requests.RequestException:
-        return None
-
-
 async def create_promo_post_menu(channel_id, channel_name, state: FSMContext):
     async with state.proxy() as data:
         promo_post_enabled = data['promo_post_status']
@@ -457,29 +446,6 @@ async def handle_increase_interval(callback_query: types.CallbackQuery, state: F
                                         reply_markup=new_menu)
 
 
-def updateChannelDetails(channel_id, promo_post_time, promo_post_interval):
-    try:
-        payload = {
-            'PromoPostTime': promo_post_time,
-            'PromoPostInterval': promo_post_interval
-        }
-
-        response = requests.put(
-            f"http://localhost:8053/api/Channel/UpdatePromoPostDetails/{channel_id}",
-            json=payload
-        )
-
-        response.raise_for_status()
-        print(response.status_code)
-        print(response)
-        if response.status_code == 200:
-            return True
-        else:
-            return False
-    except requests.RequestException:
-        return False
-
-
 @dp.callback_query_handler(lambda c: c.data.startswith('savechanges_'))
 async def handle_save_changes(callback_query: types.CallbackQuery, state: FSMContext):
     _, channel_id, channel_name = callback_query.data.split('_')
@@ -488,6 +454,7 @@ async def handle_save_changes(callback_query: types.CallbackQuery, state: FSMCon
         promo_post_interval = data.get('promo_post_interval', 7)
 
     success = updateChannelDetails(channel_id, promo_post_time, int(promo_post_interval))
+    print(success)
     if success:
         await bot.answer_callback_query(callback_query.id, "Details saved successfully!")
         await state.finish()  # End the state once the changes are saved

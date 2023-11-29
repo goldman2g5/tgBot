@@ -15,8 +15,8 @@ from api import API_URL, default_headers
 
 
 def send_message(connection_id, username, user_id):
-    # url = "http://46.39.232.190:8053/api/Auth"
-    url = "https://localhost:7256/api/Auth"
+    url = "http://188.72.77.38:1488/api/Auth"
+    # url = "https://localhost:7256/api/Auth"
     payload = {
         "Username": username,
         "UserId": user_id,
@@ -86,7 +86,8 @@ async def back_to_menu_handler(callback_query: types.CallbackQuery):
     # Open the main menu
     markup = InlineKeyboardMarkup(row_width=1)
     markup.add(InlineKeyboardButton("Add Channel", callback_data="add_channel"),
-               InlineKeyboardButton("Manage Channels", callback_data="manage_channels"))
+               InlineKeyboardButton("Manage Channels", callback_data="manage_channels"),
+               InlineKeyboardButton("Notification Settings", callback_data="manage_channels"))
 
     if callback_query.message.reply_markup:
         # Edit the existing message with the updated inline keyboard
