@@ -10,37 +10,38 @@ from aiogram import types
 from aiogram.dispatcher import FSMContext
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ContentType
 from api import *
+from bot import dp, bot
 from bot import dp, bot, client
 from misc import open_menu, create_notifications_menu
 from datetime import datetime, timedelta
 from aiogram.dispatcher.filters.state import StatesGroup, State
 
 
-def remove_negative_100(n: int) -> int:
-    s = str(n)
-    prefix = "-100"
-    if s.startswith(prefix):
-        return int(s[len(prefix):])
-    return n
-
-async def get_chat_statistics(chat_id):
-    await client.stop()
-
-    await client.start()
-
-    me = await client.api.get_me()
-    logging.info(f"Successfully logged in as {me.json()}")
-
-    chat_id = remove_negative_100(chat_id)
-
-    supergroup = await client.get_supergroup(supergroup_id=chat_id, force_update=True)
-    print(supergroup.id)
-
-    stats_url = await client.api.get_supergroup_full_info(supergroup_id=supergroup.id)
-
-    print(stats_url)
-
-    await client.stop()
+# def remove_negative_100(n: int) -> int:
+#     s = str(n)
+#     prefix = "-100"
+#     if s.startswith(prefix):
+#         return int(s[len(prefix):])
+#     return n
+#
+# async def get_chat_statistics(chat_id):
+#     await client.stop()
+#
+#     await client.start()
+#
+#     me = await client.api.get_me()
+#     logging.info(f"Successfully logged in as {me.json()}")
+#
+#     chat_id = remove_negative_100(chat_id)
+#
+#     supergroup = await client.get_supergroup(supergroup_id=chat_id, force_update=True)
+#     print(supergroup.id)
+#
+#     stats_url = await client.api.get_supergroup_full_info(supergroup_id=supergroup.id)
+#
+#     print(stats_url)
+#
+#     await client.stop()
 
 
 
@@ -51,42 +52,42 @@ async def get_chat_statistics(chat_id):
     # If you want to actually get the statistics content, you can make an HTTP request to the stats_url
 
 
-async def get_last_message(channel_id):
-    # Assuming client.api.get_chat_history is a correct method, though I think you meant bot.get_chat_history
-    await client.start()
-    me = await client.api.get_me()
-    logging.info(f"Successfully logged in as {me.json()}")
-
-    # Fetching messages
-    messages = await client.api.get_chat_history(
-        channel_id,
-        from_message_id=0,  # Let's start from the latest message
-        offset=0,
-        limit=1,  # Only retrieve one message (the latest)
-        only_local=False,
-    )
-
-    messages = messages.messages
-
-    # Extract the last message
-    last_message = messages[-1]
-
-    # Get the message details
-    message_id = last_message.id
-    chat_id = last_message.chat_id
-
-    # Converting Unix timestamp to human-readable format
-    date = datetime.utcfromtimestamp(last_message.date).strftime('%Y-%m-%d %H:%M:%S')
-
-    caption_text = last_message.content
-
-    print(last_message)
-
-    # Log details
-    print(f"Message ID: {message_id}")
-    print(f"Chat ID: {chat_id}")
-    print(f"Date: {date}")
-    print(f"Caption: {caption_text}")
+# async def get_last_message(channel_id):
+#     # Assuming client.api.get_chat_history is a correct method, though I think you meant bot.get_chat_history
+#     await client.start()
+#     me = await client.api.get_me()
+#     logging.info(f"Successfully logged in as {me.json()}")
+#
+#     # Fetching messages
+#     messages = await client.api.get_chat_history(
+#         channel_id,
+#         from_message_id=0,  # Let's start from the latest message
+#         offset=0,
+#         limit=1,  # Only retrieve one message (the latest)
+#         only_local=False,
+#     )
+#
+#     messages = messages.messages
+#
+#     # Extract the last message
+#     last_message = messages[-1]
+#
+#     # Get the message details
+#     message_id = last_message.id
+#     chat_id = last_message.chat_id
+#
+#     # Converting Unix timestamp to human-readable format
+#     date = datetime.utcfromtimestamp(last_message.date).strftime('%Y-%m-%d %H:%M:%S')
+#
+#     caption_text = last_message.content
+#
+#     print(last_message)
+#
+#     # Log details
+#     print(f"Message ID: {message_id}")
+#     print(f"Chat ID: {chat_id}")
+#     print(f"Date: {date}")
+#     print(f"Caption: {caption_text}")
 
 
 

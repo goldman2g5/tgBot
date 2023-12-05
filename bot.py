@@ -16,10 +16,10 @@ bot_token_secret = SecretStr('6073155840:AAEq_nWhpl5qHjIpEEHKQ0cq9GeF_l0cJo4')
 PHONE_NUMBER = "+79103212166"
 
 client = Client(
-    api_id=API_ID,
-    api_hash=API_HASH,
-    phone_number=PHONE_NUMBER,
-    library_path='C:/Users/Timar/td/tdlib/bin/tdjson.dll'
+     api_id=API_ID,
+     api_hash=API_HASH,
+     phone_number=PHONE_NUMBER,
+     library_path='C:/Users/Timar/td/tdlib/bin/tdjson.dll'
 )
 
 # Initialize the bot and dispatcher

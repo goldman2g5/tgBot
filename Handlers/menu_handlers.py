@@ -5,8 +5,9 @@ from urllib import parse
 from urllib.parse import parse_qs
 
 from aiogram import types
+from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters import Command, state
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, LabeledPrice
 from api import *
 from bot import dp, bot
 from misc import open_menu
@@ -40,8 +41,13 @@ def bytes_to_base64(data: bytes) -> str:
     return base64.b64encode(data).decode('utf-8')
 
 
+async def handle_payment(user_id, payment_data):
+    pass
+
+
 @dp.message_handler(Command("start"))
 async def cmd_start(message: types.Message):
+    print("ochko")
     username = message.from_user.username
     user_id = message.from_user.id
     args = message.get_args()
@@ -76,9 +82,45 @@ async def cmd_start(message: types.Message):
 
     markup = InlineKeyboardMarkup(row_width=1)
     markup.add(InlineKeyboardButton("Add Channel", callback_data="add_channel"),
-                   InlineKeyboardButton("Manage Channels", callback_data="manage_channels"))
+               InlineKeyboardButton("Manage Channels", callback_data="manage_channels"),
+               InlineKeyboardButton("Notification Settings", callback_data="manage_channels"))
 
     await bot.send_message(message.chat.id, "Menu:", reply_markup=markup)
+
+
+YCASSATOKEN = "381764678:TEST:59527"
+
+
+async def start_payment_process(message: types.Message, payment_data: dict, state: FSMContext):
+    subscriptions = get_subscriptions_from_api()
+    if subscriptions is not None:
+        selected_subscription = next(
+            (sub for sub in subscriptions if sub['id'] == payment_data["subscription_type_id"]), None)
+        if selected_subscription:
+            invoice_title = f"Subscription for {payment_data['channel_name']}"
+            invoice_description = f"{selected_subscription['name']} subscription"
+            invoice_payload = f"{payment_data['channel_id']}_{payment_data['channel_name']}_{selected_subscription['id']}_{selected_subscription['name']}"
+            invoice_currency = "RUB"
+            price_amount = selected_subscription['price'] - (
+                        selected_subscription['price'] * payment_data.get('discount', 0) / 100)
+            invoice_prices = [LabeledPrice(label="RUB", amount=price_amount * 100)]
+
+            invoice_message = await bot.send_invoice(
+                chat_id=message.from_user.id,
+                title=invoice_title,
+                description=invoice_description,
+                payload=invoice_payload,
+                provider_token=YCASSATOKEN,
+                currency=invoice_currency,
+                start_parameter="subscribe",
+                prices=invoice_prices
+            )
+
+            await state.update_data(invoice_msg_id=invoice_message.message_id)
+        else:
+            await message.reply("Invalid subscription choice.")
+    else:
+        await message.reply("Failed to retrieve subscription data from the API.")
 
 
 @dp.callback_query_handler(lambda c: c.data == "back_to_menu")
