@@ -2,6 +2,7 @@ import asyncio
 import datetime
 import json
 import logging
+from collections import defaultdict
 
 import aiogram.types
 import aiohttp
@@ -17,33 +18,32 @@ from datetime import datetime, timedelta
 from aiogram.dispatcher.filters.state import StatesGroup, State
 
 
-# def remove_negative_100(n: int) -> int:
-#     s = str(n)
-#     prefix = "-100"
-#     if s.startswith(prefix):
-#         return int(s[len(prefix):])
-#     return n
-#
-# async def get_chat_statistics(chat_id):
-#     await client.stop()
-#
-#     await client.start()
-#
-#     me = await client.api.get_me()
-#     logging.info(f"Successfully logged in as {me.json()}")
-#
-#     chat_id = remove_negative_100(chat_id)
-#
-#     supergroup = await client.get_supergroup(supergroup_id=chat_id, force_update=True)
-#     print(supergroup.id)
-#
-#     stats_url = await client.api.get_supergroup_full_info(supergroup_id=supergroup.id)
-#
-#     print(stats_url)
-#
-#     await client.stop()
+def remove_negative_100(n: int) -> int:
+    s = str(n)
+    prefix = "-100"
+    if s.startswith(prefix):
+        return int(s[len(prefix):])
+    return n
 
 
+async def get_chat_statistics(chat_id):
+    await client.stop()
+
+    await client.start()
+
+    me = await client.api.get_me()
+    logging.info(f"Successfully logged in as {me.json()}")
+
+    chat_id = remove_negative_100(chat_id)
+
+    supergroup = await client.get_supergroup(supergroup_id=chat_id, force_update=True)
+    print(supergroup.id)
+
+    stats_url = await client.api.get_supergroup_full_info(supergroup_id=supergroup.id)
+
+    print(stats_url)
+
+    await client.stop()
 
     # stats = await client.api.get_chat(chat_id)
 
@@ -52,43 +52,44 @@ from aiogram.dispatcher.filters.state import StatesGroup, State
     # If you want to actually get the statistics content, you can make an HTTP request to the stats_url
 
 
-# async def get_last_message(channel_id):
-#     # Assuming client.api.get_chat_history is a correct method, though I think you meant bot.get_chat_history
-#     await client.start()
-#     me = await client.api.get_me()
-#     logging.info(f"Successfully logged in as {me.json()}")
-#
-#     # Fetching messages
-#     messages = await client.api.get_chat_history(
-#         channel_id,
-#         from_message_id=0,  # Let's start from the latest message
-#         offset=0,
-#         limit=1,  # Only retrieve one message (the latest)
-#         only_local=False,
-#     )
-#
-#     messages = messages.messages
-#
-#     # Extract the last message
-#     last_message = messages[-1]
-#
-#     # Get the message details
-#     message_id = last_message.id
-#     chat_id = last_message.chat_id
-#
-#     # Converting Unix timestamp to human-readable format
-#     date = datetime.utcfromtimestamp(last_message.date).strftime('%Y-%m-%d %H:%M:%S')
-#
-#     caption_text = last_message.content
-#
-#     print(last_message)
-#
-#     # Log details
-#     print(f"Message ID: {message_id}")
-#     print(f"Chat ID: {chat_id}")
-#     print(f"Date: {date}")
-#     print(f"Caption: {caption_text}")
+async def get_last_week_messages(client, channel_id):
+    one_week_ago = datetime.now() - timedelta(weeks=1)
+    all_messages = []
+    from_message_id = 0
 
+
+    while True:
+        messages = await client.api.get_chat_history(
+            channel_id,
+            from_message_id=from_message_id,
+            offset=0,
+            limit=100,
+            only_local=False,
+        )
+
+        if not messages.messages:
+            break
+
+        for message in messages.messages:
+            message_date = datetime.utcfromtimestamp(message.date)
+            if message_date < one_week_ago:
+                return all_messages
+            all_messages.append(message)
+
+        from_message_id = messages.messages[-1].id
+
+    return all_messages
+
+
+async def calculate_daily_views(messages):
+    daily_views = defaultdict(int)  # Dictionary to store view counts per day
+    for message in messages:
+        # Check if interaction_info exists and view_count is in interaction_info
+        if message.interaction_info.view_count is not None and message.date is not None:
+            message_date = datetime.utcfromtimestamp(message.date).date()
+            view_count = message.interaction_info.view_count  # Access view_count using dot notation
+            daily_views[message_date] += view_count
+    return daily_views
 
 
 @dp.callback_query_handler(lambda c: c.data.startswith("channel_"))
@@ -96,15 +97,24 @@ async def channel_menu_handler(callback_query: types.CallbackQuery):
     channel_id = int(callback_query.data.split("_")[1])
     channel_name = callback_query.data.split("_")[2]
 
-    # chat = await bot.get_chat("@anima_shiza_autora")
-    #
-    # chatid = chat.id
-    #
-    # print(chat.id)
-    #
-    # all_messages = await get_last_message(chatid)
-    #
-    # print(all_messages)
+    await client.stop()
+
+    await client.start()
+
+    me = await client.api.get_me()
+    logging.info(f"Successfully logged in as {me.json()}")
+
+    chat = await bot.get_chat("@anima_shiza_autora")
+
+    chatid = chat.id
+
+    print(chat.id)
+
+    messages = await get_last_week_messages(client, chatid)
+    print(messages)
+    views_by_day = await calculate_daily_views(messages)
+    for day, views in views_by_day.items():
+        print(f"{day}: {views} views")
 
     # Create inline buttons for channel menu
     markup = InlineKeyboardMarkup(row_width=1)

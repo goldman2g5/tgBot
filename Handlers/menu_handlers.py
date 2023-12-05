@@ -47,7 +47,6 @@ async def handle_payment(user_id, payment_data):
 
 @dp.message_handler(Command("start"))
 async def cmd_start(message: types.Message):
-    print("ochko")
     username = message.from_user.username
     user_id = message.from_user.id
     args = message.get_args()
@@ -72,7 +71,6 @@ async def cmd_start(message: types.Message):
 
     if args:
         connection_id = args
-        print(connection_id)
         send_message(connection_id, username, user_id)
         markup = InlineKeyboardMarkup()
         markup.add(InlineKeyboardButton("Got it", callback_data="remove_authorize_msg"))
@@ -159,7 +157,6 @@ async def add_channel_handler(callback_query: types.CallbackQuery):
 async def manage_channels_handler(callback_query: types.CallbackQuery):
     # Get the user's ID
     user_id = callback_query.from_user.id
-    print(user_id)
     # Retrieve the user's channels from the API
     channels = get_user_channels(user_id)
 
