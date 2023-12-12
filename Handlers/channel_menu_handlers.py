@@ -478,6 +478,10 @@ async def tags_handler(callback_query: types.CallbackQuery, state: FSMContext):
     channel_id = int(callback_query.data.split("_")[1])
     channel_name = callback_query.data.split("_")[2]
     callback_arguments = callback_query.data.split("_")
+
+    tag_limit = get_channel_tag_limit(channel_id)
+    print(f"Tag limit for channel ID {channel_id}: {tag_limit}")
+
     if len(callback_arguments) > 3:
         action = callback_query.data.split("_")[3]
         tag = callback_query.data.split("_")[4]
@@ -485,7 +489,14 @@ async def tags_handler(callback_query: types.CallbackQuery, state: FSMContext):
         if action == "toggle":
             async with state.proxy() as data:
                 tags = data["tags"]
-                tags[tag] = not tags[tag]
+
+                # Check if the tag limit is reached before toggling
+                if tags[tag] or sum(tags.values()) < tag_limit:
+                    tags[tag] = not tags[tag]
+                else:
+                    await callback_query.answer("Tag limit reached", show_alert=True)
+                    return  # Prevent further processing
+
     else:
         async with state.proxy() as data:
             tags = await get_channel_tags(channel_id)

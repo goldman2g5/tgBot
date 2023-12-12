@@ -233,6 +233,32 @@ def get_subscriptions_from_api():
         logger.critical(f"Failed to get subscription types\n Server response - {response.text}")
         return None
 
+def get_channel_tag_limit(channel_id):
+    channel = getChannelById(channel_id)
+    if channel is None:
+        logger.error(f"Failed to get channel details for ID: {channel_id}")
+        return None
+
+    subType_id = channel.get('subType')
+    if subType_id is None:
+        logger.error(f"No subType found for channel ID: {channel_id}")
+        return 3
+
+    # Check for the special case where subType is 0
+    if subType_id == 0:
+        return 3
+
+    subscriptions = get_subscriptions_from_api()
+    if subscriptions is None:
+        logger.error("Failed to get subscriptions")
+        return 3
+
+    for subType in subscriptions:
+        if subType.get('id') == subType_id:
+            return subType.get('tagLimit')
+
+    logger.error(f"No matching subscription type found for channel ID: {channel_id}")
+    return None
 
 def subscribe_channel(channel_id, subtype_id):
     try:
@@ -328,7 +354,7 @@ def updateChannelDetails(channel_id, promo_post_time, promo_post_interval):
         }
 
         response = requests.put(
-            f"http://localhost:8053/api/Channel/UpdatePromoPostDetails/{channel_id}",
+            f"{API_URL}/Channel/UpdatePromoPostDetails/{channel_id}",
             json=payload, verify=Verify_value, headers=default_headers
         )
 
@@ -345,7 +371,7 @@ def updateChannelDetails(channel_id, promo_post_time, promo_post_interval):
 
 def getChannelById(channel_id):
     try:
-        response = requests.get(f"https://localhost:7256/api/Channel/{channel_id}", verify=Verify_value, headers=default_headers)
+        response = requests.get(f"{API_URL}/Channel/{channel_id}", verify=Verify_value, headers=default_headers)
         print(response)
         response.raise_for_status()
         return response.json()
