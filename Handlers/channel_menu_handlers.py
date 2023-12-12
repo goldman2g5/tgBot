@@ -97,24 +97,24 @@ async def channel_menu_handler(callback_query: types.CallbackQuery):
     channel_id = int(callback_query.data.split("_")[1])
     channel_name = callback_query.data.split("_")[2]
 
-    await client.stop()
-
-    await client.start()
-
-    me = await client.api.get_me()
-    logging.info(f"Successfully logged in as {me.json()}")
-
-    chat = await bot.get_chat("@anima_shiza_autora")
-
-    chatid = chat.id
-
-    print(chat.id)
-
-    messages = await get_last_week_messages(client, chatid)
-    print(messages)
-    views_by_day = await calculate_daily_views(messages)
-    for day, views in views_by_day.items():
-        print(f"{day}: {views} views")
+    # await client.stop()
+    #
+    # await client.start()
+    #
+    # me = await client.api.get_me()
+    # logging.info(f"Successfully logged in as {me.json()}")
+    #
+    # chat = await bot.get_chat("@anima_shiza_autora")
+    #
+    # chatid = chat.id
+    #
+    # print(chat.id)
+    #
+    # messages = await get_last_week_messages(client, chatid)
+    # print(messages)
+    # views_by_day = await calculate_daily_views(messages)
+    # for day, views in views_by_day.items():
+    #     print(f"{day}: {views} views")
 
     # Create inline buttons for channel menu
     markup = InlineKeyboardMarkup(row_width=1)
@@ -760,7 +760,7 @@ async def process_bump_button(callback_query: types.CallbackQuery):
         if response.status_code == 204:
             await callback_query.answer("Channel bumped successfully.")
         elif response.status_code == 400:
-            time_left = response.default_headers.get("X-TimeLeft")
+            time_left = response.headers.get("X-TimeLeft")
             if time_left:
                 time_left = int(time_left)
                 duration = timedelta(seconds=time_left)
