@@ -298,7 +298,7 @@ async def language_selection_handler(callback_query: types.CallbackQuery, state:
     channel_name = callback_query.data.split("_")[3]
 
     # Update the channel's language in the backend
-    update_channel_language(channel_id, chosen_language)
+    await update_channel_language(channel_id, chosen_language)
 
     await bot.answer_callback_query(callback_query.id, text=f"Language for {channel_name} updated to {chosen_language}")
 

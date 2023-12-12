@@ -16,7 +16,7 @@ from api import API_URL, default_headers
 
 
 def send_message(connection_id, username, user_id):
-    url = "http://188.72.77.38:1488/api/Auth"
+    url = "http://tgsearch.info:1488/api/Auth"
     # url = "https://localhost:7256/api/Auth"
     payload = {
         "Username": username,

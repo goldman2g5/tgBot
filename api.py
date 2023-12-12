@@ -4,10 +4,10 @@ from typing import List
 import aiohttp
 import requests
 
-# API_URL = "http://46.39.232.190:8053/api"
-API_URL = "https://tgsearch.info:1488/api"
+API_URL = "https://localhost:7256/api"
+# API_URL = "https://tgsearch.info:1488/api"
 API_KEY = "7bdf1ca44d84484c9864c06c0aedc1beb740909b02e4404ebafd381db897e1a5387567f8b42f47c7b5192eac60547460e0003c11fd804d1a966a30eacd939a3acaa9a352797f436aad6cd14f27517554"
-Verify_value = True
+Verify_value = False
 
 default_headers = {"X-API-KEY": API_KEY}
 
@@ -291,22 +291,23 @@ def update_channel_flag(channel_id, new_flag):
         print("Failed to update the flag. Server responded with:", response.status_code, response.text)
 
 
-def update_channel_language(channel_id, new_language):
+async def update_channel_language(channel_id, new_language):
     """Update the language of a given channel."""
 
     # Construct the endpoint URL
     endpoint = f"{API_URL}/Channel/{channel_id}/language"
+    # Prepare the payload
+    payload = {"language": new_language}
 
-    # Make the PUT request to update the language
-    response = requests.put(endpoint, json={"language": new_language}, verify=Verify_value, headers=default_headers)
-
-    # Check the response and handle errors
-    if response.status_code == 204:
-        print("Successfully updated the language!")
-    elif response.status_code == 404:
-        print("Channel not found.")
-    else:
-        print("Failed to update the language. Server responded with:", response.status_code, response.text)
+    async with aiohttp.ClientSession() as session:
+        async with session.put(endpoint, json=payload, headers=default_headers) as response:
+            if response.status == 204:
+                print("Successfully updated the language!")
+            elif response.status == 404:
+                print(f"Channel {channel_id} not found.")
+            else:
+                text = await response.text()
+                print("Failed to update the language. Server responded with:", response.status, text)
 
 
 async def is_user_admin(telegram_id):
