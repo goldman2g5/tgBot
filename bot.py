@@ -23,6 +23,6 @@ client = Client(
 )
 
 # Initialize the bot and dispatcher
-bot = Bot(token="6073155840:AAEq_nWhpl5qHjIpEEHKQ0cq9GeF_l0cJo4")
+bot = Bot(token="6415611500:AAEZCM43HfrQl0PbExLcoIK33Eze8remjlQ")
 storage = MemoryStorage()
 dp = Dispatcher(bot, storage=storage)
