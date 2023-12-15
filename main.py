@@ -18,9 +18,8 @@ from throthling_middleware import ThrottlingMiddleware
 if __name__ == '__main__':
     # Set the log level for debugging
     logging.basicConfig(level=logging.INFO, filename="logs.log", filemode="w")
-    print(f"connectionId: {negotiation['connectionId']}")
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
-    loop.run_until_complete(connectToHub(negotiation['connectionId']))
+    loop.run_until_complete(connectToHub())
     dp.middleware.setup(ThrottlingMiddleware())
     executor.start_polling(dp, skip_updates=True, on_startup=start_notification_service)
