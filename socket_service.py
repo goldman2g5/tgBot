@@ -88,8 +88,33 @@ async def connectToHub(connectionId):
                     continue
 
                 # Send the result back
-                print(result)
-                await websocket.send(json.dumps(result))
+                # start
+                start_message = {
+                    "type": 1,
+                    "invocationId": "invocation_id",
+                    "target": "ReceiveStream",
+                    "arguments": [
+                        'Bob'
+                    ],
+                    "streamIds": [
+                        "stream_id"
+                    ]
+                }
+                await websocket.send(toSignalRMessage(start_message))
+                # send
+                message = {
+                    "type": 2,
+                    "invocationId": "stream_id",
+                    "item": f'{result}'
+                }
+                await websocket.send(toSignalRMessage(message))
+
+                # end
+                completion_message = {
+                    "type": 3,
+                    "invocationId": "stream_id"
+                }
+                await websocket.send(toSignalRMessage(completion_message))
 
         await handshake()
 
@@ -107,34 +132,7 @@ async def connectToHub(connectionId):
         #     await websocket.send(toSignalRMessage(message))
         #     await asyncio.sleep(5)
 
-        # start
-        start_message = {
-            "type": 1,
-            "invocationId": "invocation_id",
-            "target": "ReceiveStream",
-            "arguments": [
-                'Bob'
-            ],
-            "streamIds": [
-                "stream_id"
-            ]
-        }
-        await websocket.send(toSignalRMessage(start_message))
-        # send
-        for i in [1, 2, 3]:
-            message = {
-                "type": 2,
-                "invocationId": "stream_id",
-                "item": f'Foo {i}'
-            }
-            await websocket.send(toSignalRMessage(message))
-            await asyncio.sleep(2)
-
-        # end
-        completion_message = {
-            "type": 3,
-            "invocationId": "stream_id"
-        }
-        await websocket.send(toSignalRMessage(completion_message))
         await ping_task
         await listen_task
+
+
