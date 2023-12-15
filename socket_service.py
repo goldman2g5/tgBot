@@ -122,16 +122,6 @@ async def connectToHub(connectionId):
         listen_task = asyncio.create_task(listen())
         ping_task = asyncio.create_task(start_pinging())
 
-        # for i in [1,2,3]:
-        #     message = {
-        #         "type": 1,
-        #         "invocationId": f"{i}",
-        #         "target": "Get",
-        #         "arguments": [ f"World {i}" ]
-        #     }
-        #     await websocket.send(toSignalRMessage(message))
-        #     await asyncio.sleep(5)
-
         await ping_task
         await listen_task
 
