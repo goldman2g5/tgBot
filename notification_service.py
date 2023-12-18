@@ -76,6 +76,7 @@ async def fetch_notifications():
         response.raise_for_status()
         bump_notifications = response.json()
         for notification in bump_notifications:
+            time.sleep(1)
             await send_bump_notification(notification)
 
         # Fetch subscription notifications from the API
@@ -83,6 +84,7 @@ async def fetch_notifications():
         response.raise_for_status()
         sub_notifications = response.json()
         for notification in sub_notifications:
+            time.sleep(1)
             await send_sub_notification(notification)
 
         # Fetch promo posts from the API
@@ -91,6 +93,7 @@ async def fetch_notifications():
         promo_notifications = response.json()
         print(promo_notifications)
         for notification in promo_notifications:
+            time.sleep(1)
             await send_promo_post_notification(notification)
 
         # Fetch report notifications from the API
@@ -112,5 +115,5 @@ async def check_notifications():
 
 
 async def start_notification_service(dispatcher: Dispatcher):
-    # scheduler.add_job(check_notifications, IntervalTrigger(seconds=15))
+    scheduler.add_job(check_notifications, IntervalTrigger(seconds=5))
     scheduler.start()

@@ -1,7 +1,86 @@
-import asyncio
 import websockets
-import requests
-import json
+import asyncio
+import datetime
+from collections import defaultdict
+from datetime import datetime, timedelta
+
+import websockets
+
+from api import *
+from bot import client
+
+
+def remove_negative_100(n: int) -> int:
+    s = str(n)
+    prefix = "-100"
+    if s.startswith(prefix):
+        return int(s[len(prefix):])
+    return n
+
+
+async def get_chat_statistics(chat_id):
+    await client.stop()
+
+    await client.start()
+
+    me = await client.api.get_me()
+    logging.info(f"Successfully logged in as {me.json()}")
+
+    chat_id = remove_negative_100(chat_id)
+
+    supergroup = await client.get_supergroup(supergroup_id=chat_id, force_update=True)
+    print(supergroup.id)
+
+    stats_url = await client.api.get_supergroup_full_info(supergroup_id=supergroup.id)
+
+    print(stats_url)
+
+    await client.stop()
+
+    # stats = await client.api.get_chat(chat_id)
+
+    # logging.info(f"Statistics URL: {stats_url}")
+
+    # If you want to actually get the statistics content, you can make an HTTP request to the stats_url
+
+
+async def get_last_week_messages(client, channel_id):
+    one_week_ago = datetime.now() - timedelta(weeks=1)
+    all_messages = []
+    from_message_id = 0
+
+    while True:
+        messages = await client.api.get_chat_history(
+            channel_id,
+            from_message_id=from_message_id,
+            offset=0,
+            limit=100,
+            only_local=False,
+        )
+
+        if not messages.messages:
+            break
+
+        for message in messages.messages:
+            message_date = datetime.utcfromtimestamp(message.date)
+            if message_date < one_week_ago:
+                return all_messages
+            all_messages.append(message)
+
+        from_message_id = messages.messages[-1].id
+
+    return all_messages
+
+
+async def calculate_daily_views(messages):
+    daily_views = defaultdict(int)  # Dictionary to store view counts per day
+    for message in messages:
+        # Check if interaction_info exists and view_count is in interaction_info
+        if message.interaction_info.view_count is not None and message.date is not None:
+            message_date = datetime.utcfromtimestamp(message.date).date()
+            view_count = message.interaction_info.view_count  # Access view_count using dot notation
+            daily_views[message_date] += view_count
+    return daily_views
 
 
 # Function for summing two numbers
@@ -14,7 +93,7 @@ def sum_of_two(number1, number2):
         return {"error": "Invalid input. Please provide valid numbers."}
 
     total = num1 + num2
-    return {"result": total}
+    return {"result": [total, 228], "bebra": {"zieg": "hail"}, "status": {"trezvost": False}}
 
 
 # Helper function to format SignalR messages
@@ -67,6 +146,7 @@ async def listen(websocket, running):
 
                 function_name = function_call_data.get("functionName")
                 parameters = function_call_data.get("parameters", {})
+                invocation_id = function_call_data.get("invocationId", "unknown")  # Extract the invocationId
 
                 # Map function names to actual function calls
                 function_map = {
@@ -78,12 +158,15 @@ async def listen(websocket, running):
                 if function_name in function_map:
                     try:
                         result = function_map[function_name](**parameters)
+                        result = {"invocationId": invocation_id,
+                                  "data": result}  # Include the invocationId in the result
                     except TypeError as e:
-                        result = {"error": f"Invalid parameters for {function_name}: {str(e)}"}
+                        result = {"invocationId": invocation_id,
+                                  "error": f"Invalid parameters for {function_name}: {str(e)}"}
                     except Exception as e:
-                        result = {"error": f"Error in {function_name}: {str(e)}"}
+                        result = {"invocationId": invocation_id, "error": f"Error in {function_name}: {str(e)}"}
                 else:
-                    result = {"error": "Unknown function"}
+                    result = {"invocationId": invocation_id, "error": "Unknown function"}
             else:
                 print("Not a function call type message. Skipping.")
                 continue
@@ -103,10 +186,13 @@ async def listen(websocket, running):
             }
             await websocket.send(toSignalRMessage(start_message))
             # send
+
+            json_result = json.dumps(result)
+
             message = {
                 "type": 2,
                 "invocationId": "stream_id",
-                "item": f'{result}'
+                "item": f'{json_result}'
             }
             await websocket.send(toSignalRMessage(message))
 
@@ -122,7 +208,6 @@ async def listen(websocket, running):
 
 # Main function to connect to the SignalR hub
 async def connectToHub():
-
     while True:
         try:
             negotiation = requests.post('http://localhost:7256/BotHub/negotiate?negotiateVersion=0').json()
@@ -139,5 +224,3 @@ async def connectToHub():
             print(f"Error: {e}")
             print("Connection closed, attempting to reconnect...")
             await asyncio.sleep(5)  # Wait for 5 seconds before trying to reconnect
-
-
