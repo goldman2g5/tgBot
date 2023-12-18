@@ -18,12 +18,7 @@ from datetime import datetime, timedelta
 from aiogram.dispatcher.filters.state import StatesGroup, State
 from socket_service import *
 
-
-@dp.callback_query_handler(lambda c: c.data.startswith("channel_"))
-async def channel_menu_handler(callback_query: types.CallbackQuery):
-    channel_id = int(callback_query.data.split("_")[1])
-    channel_name = callback_query.data.split("_")[2]
-
+async def get_chat_statistics(chat_id):
     await client.stop()
 
     await client.start()
@@ -31,15 +26,29 @@ async def channel_menu_handler(callback_query: types.CallbackQuery):
     me = await client.api.get_me()
     logging.info(f"Successfully logged in as {me.json()}")
 
-    chat = await bot.get_chat("@anima_shiza_autora")
+    chat_id = remove_negative_100(chat_id)
 
-    chatid = chat.id
+    supergroup = await client.get_supergroup(supergroup_id=chat_id, force_update=True)
+    print(supergroup.id)
 
-    print(chat.id)
+    stats_url = await client.api.get_supergroup_full_info(supergroup_id=supergroup.id)
 
-    messages = await get_last_week_messages(client, chatid)
-    print(messages)
-    views_by_day = await calculate_daily_views(messages)
+    print(stats_url)
+
+    await client.stop()
+
+    # stats = await client.api.get_chat(chat_id)
+
+    # logging.info(f"Statistics URL: {stats_url}")
+
+    # If you want to actually get the statistics content, you can make an HTTP request to the stats_url
+
+@dp.callback_query_handler(lambda c: c.data.startswith("channel_"))
+async def channel_menu_handler(callback_query: types.CallbackQuery):
+    channel_id = int(callback_query.data.split("_")[1])
+    channel_name = callback_query.data.split("_")[2]
+
+    views_by_day = await get_daily_views_by_channel("@anima_shiza_autora", 50)
     for day, views in views_by_day.items():
         print(f"{day}: {views} views")
 
