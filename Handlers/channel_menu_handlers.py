@@ -45,12 +45,13 @@ async def get_chat_statistics(chat_id):
 
 @dp.callback_query_handler(lambda c: c.data.startswith("channel_"))
 async def channel_menu_handler(callback_query: types.CallbackQuery):
+    await callback_query.answer()
     channel_id = int(callback_query.data.split("_")[1])
     channel_name = callback_query.data.split("_")[2]
 
-    views_by_day = await get_daily_views_by_channel("@anima_shiza_autora", 50)
-    for day, views in views_by_day.items():
-        print(f"{day}: {views} views")
+    # views_by_day = await get_daily_views_by_channel(channel_name, 50)
+    # for day, views in views_by_day.items():
+    #     print(f"{day}: {views} views")
 
     # Create inline buttons for channel menu
     markup = InlineKeyboardMarkup(row_width=1)
@@ -82,6 +83,7 @@ class DescriptionState(StatesGroup):
 @dp.callback_query_handler(
     lambda c: c.data.startswith("customization_") and not c.data.startswith("customization_description"))
 async def customization_handler(callback_query: types.CallbackQuery, state: FSMContext):
+    await callback_query.answer()
     channel_id = int(callback_query.data.split("_")[1])
     channel_name = callback_query.data.split("_")[2]
 
@@ -108,6 +110,7 @@ async def customization_handler(callback_query: types.CallbackQuery, state: FSMC
 
 @dp.callback_query_handler(lambda c: c.data.startswith("customization_description"))
 async def description_handler(callback_query: types.CallbackQuery, state: FSMContext):
+    await callback_query.answer()
     markup = InlineKeyboardMarkup()
     markup.add(InlineKeyboardButton("Cancel", callback_data="cancel_description"))
 
@@ -140,6 +143,7 @@ async def process_description(message: types.Message, state: FSMContext):
 
 @dp.callback_query_handler(lambda c: c.data == "cancel_description", state=DescriptionState.waiting_for_description)
 async def cancel_description(callback_query: types.CallbackQuery, state: FSMContext):
+    await callback_query.answer()
     # Retrieve the message IDs from the state
     data = await state.get_data()
     messages_to_delete = data.get('messages_to_delete', [])
@@ -151,6 +155,7 @@ async def cancel_description(callback_query: types.CallbackQuery, state: FSMCont
 
 @dp.callback_query_handler(lambda c: c.data.startswith("lang_settings_"))
 async def language_settings_handler(callback_query: types.CallbackQuery, state: FSMContext):
+    await callback_query.answer()
     channel_id = int(callback_query.data.split("_")[2])
     channel_name = callback_query.data.split("_")[3]
 
@@ -170,6 +175,7 @@ async def language_settings_handler(callback_query: types.CallbackQuery, state: 
 
 @dp.callback_query_handler(lambda c: c.data.startswith("edit_language_"))
 async def edit_language_handler(callback_query: types.CallbackQuery, state: FSMContext):
+    await callback_query.answer()
     channel_id = int(callback_query.data.split("_")[2])
     channel_name = callback_query.data.split("_")[3]
 
@@ -190,6 +196,7 @@ async def edit_language_handler(callback_query: types.CallbackQuery, state: FSMC
 
 @dp.callback_query_handler(lambda c: c.data.startswith("edit_flags_"))
 async def edit_flags_handler(callback_query: types.CallbackQuery, state: FSMContext):
+    await callback_query.answer()
     channel_id = int(callback_query.data.split("_")[2])
     channel_name = callback_query.data.split("_")[3]
 
@@ -211,6 +218,7 @@ async def edit_flags_handler(callback_query: types.CallbackQuery, state: FSMCont
 
 @dp.callback_query_handler(lambda c: c.data.startswith("flagchoice_"))
 async def flag_choice_handler(callback_query: types.CallbackQuery, state: FSMContext):
+    await callback_query.answer()
     _, flag_iso_code, channel_id, channel_name = callback_query.data.split("_")
 
     flag_names = {
@@ -229,6 +237,7 @@ async def flag_choice_handler(callback_query: types.CallbackQuery, state: FSMCon
 
 @dp.callback_query_handler(lambda c: c.data.startswith("language_"))
 async def language_selection_handler(callback_query: types.CallbackQuery, state: FSMContext):
+    await callback_query.answer()
     chosen_language = callback_query.data.split("_")[1]
     channel_id = int(callback_query.data.split("_")[2])
     channel_name = callback_query.data.split("_")[3]
@@ -241,6 +250,7 @@ async def language_selection_handler(callback_query: types.CallbackQuery, state:
 
 @dp.callback_query_handler(lambda c: c.data.startswith("promotion_"))
 async def promotion_submenu_handler(callback_query: types.CallbackQuery, state: FSMContext):
+    await callback_query.answer()
     channel_id = int(callback_query.data.split("_")[1])
     channel_name = callback_query.data.split("_")[2]
 
@@ -263,6 +273,7 @@ async def promotion_submenu_handler(callback_query: types.CallbackQuery, state: 
 # Handler for the "Enable/Disable Promo Post" button
 @dp.callback_query_handler(lambda c: c.data.startswith("togglepromopost_"))
 async def process_toggle_promo_post_button(callback_query: types.CallbackQuery, state: FSMContext):
+    await callback_query.answer()
     channel_id = int(callback_query.data.split("_")[1])
     channel_name = callback_query.data.split("_")[2]
 
@@ -341,6 +352,7 @@ async def create_promo_post_menu(channel_id, channel_name, state: FSMContext):
 
 @dp.callback_query_handler(lambda c: c.data.startswith('decreasetime_'))
 async def handle_decrease_time(callback_query: types.CallbackQuery, state: FSMContext):
+    await callback_query.answer()
     _, channel_id, channel_name, current_time = callback_query.data.split('_')
     async with state.proxy() as data:
         time_obj = datetime.strptime(current_time, '%H:%M:%S').time()
@@ -355,6 +367,7 @@ async def handle_decrease_time(callback_query: types.CallbackQuery, state: FSMCo
 
 @dp.callback_query_handler(lambda c: c.data.startswith('increasetime_'))
 async def handle_increase_time(callback_query: types.CallbackQuery, state: FSMContext):
+    await callback_query.answer()
     _, channel_id, channel_name, current_time = callback_query.data.split('_')
     async with state.proxy() as data:
         time_obj = datetime.strptime(current_time, '%H:%M:%S').time()
@@ -369,6 +382,7 @@ async def handle_increase_time(callback_query: types.CallbackQuery, state: FSMCo
 
 @dp.callback_query_handler(lambda c: c.data.startswith('decreaseinterval_'))
 async def handle_decrease_interval(callback_query: types.CallbackQuery, state: FSMContext):
+    await callback_query.answer()
     _, channel_id, channel_name, current_interval = callback_query.data.split('_')
     async with state.proxy() as data:
         new_interval = max(1, int(current_interval) - 1)
@@ -382,6 +396,7 @@ async def handle_decrease_interval(callback_query: types.CallbackQuery, state: F
 
 @dp.callback_query_handler(lambda c: c.data.startswith('increaseinterval_'))
 async def handle_increase_interval(callback_query: types.CallbackQuery, state: FSMContext):
+    await callback_query.answer()
     _, channel_id, channel_name, current_interval = callback_query.data.split('_')
     async with state.proxy() as data:
         new_interval = int(current_interval) + 1
@@ -395,6 +410,7 @@ async def handle_increase_interval(callback_query: types.CallbackQuery, state: F
 
 @dp.callback_query_handler(lambda c: c.data.startswith('savechanges_'))
 async def handle_save_changes(callback_query: types.CallbackQuery, state: FSMContext):
+    await callback_query.answer()
     _, channel_id, channel_name = callback_query.data.split('_')
     async with state.proxy() as data:
         promo_post_time = data.get('promo_post_time', '10:00:00')
@@ -411,6 +427,7 @@ async def handle_save_changes(callback_query: types.CallbackQuery, state: FSMCon
 
 @dp.callback_query_handler(lambda c: c.data.startswith("tags_"))
 async def tags_handler(callback_query: types.CallbackQuery, state: FSMContext):
+    await callback_query.answer()
     channel_id = int(callback_query.data.split("_")[1])
     channel_name = callback_query.data.split("_")[2]
     callback_arguments = callback_query.data.split("_")
@@ -463,6 +480,7 @@ async def tags_handler(callback_query: types.CallbackQuery, state: FSMContext):
 
 @dp.callback_query_handler(lambda c: c.data.startswith("save_tags_"))
 async def save_tags_handler(callback_query: types.CallbackQuery, state: FSMContext):
+    await callback_query.answer()
     channel_id = int(callback_query.data.split("_")[2])
 
     async with state.proxy() as data:
@@ -493,6 +511,7 @@ async def save_tags_handler(callback_query: types.CallbackQuery, state: FSMConte
 # Handler for notifications button
 @dp.callback_query_handler(lambda c: c.data.startswith("notifications_"))
 async def process_notifications_button(callback_query: types.CallbackQuery):
+    await callback_query.answer()
     channel_id = int(callback_query.data.split("_")[1])
     channel_name = callback_query.data.split("_")[2]
 
@@ -517,6 +536,7 @@ async def process_notifications_button(callback_query: types.CallbackQuery):
 # Handler for toggle/disable button
 @dp.callback_query_handler(lambda c: c.data.startswith("toggle_notifications_"))
 async def process_toggle_notifications_button(callback_query: types.CallbackQuery):
+    await callback_query.answer()
     channel_id = int(callback_query.data.split("_")[2])
     channel_name = callback_query.data.split("_")[3]
 
@@ -551,6 +571,7 @@ async def process_toggle_notifications_button(callback_query: types.CallbackQuer
 # Handler for subscription button
 @dp.callback_query_handler(lambda c: c.data.startswith("subscription_"))
 async def process_subscription_button(callback_query: types.CallbackQuery):
+    await callback_query.answer()
     channel_id = int(callback_query.data.split("_")[1])
     channel_name = callback_query.data.split("_")[2]
 
@@ -589,6 +610,7 @@ YCASSATOKEN = "381764678:TEST:59527"
 
 @dp.callback_query_handler(lambda c: c.data.startswith("subscriptionchoice_"))
 async def process_subscription_choice(callback_query: types.CallbackQuery, state: FSMContext):
+    await callback_query.answer()
     choice_data = callback_query.data.split("_")
     channel_id = int(choice_data[1])
     channel_name = choice_data[2]
@@ -643,6 +665,7 @@ async def process_subscription_choice(callback_query: types.CallbackQuery, state
 # Handler for cancel subscription button
 @dp.callback_query_handler(lambda c: c.data == "cancel_subscription")
 async def process_cancel_subscription(callback_query: types.CallbackQuery, state: FSMContext):
+    await callback_query.answer()
     user_data = await state.get_data()
 
     # Retrieve message IDs from the state
@@ -698,6 +721,7 @@ async def process_pay(message: types.Message):
 # Handler for bump button callback
 @dp.callback_query_handler(lambda c: c.data.startswith("bump_"))
 async def process_bump_button(callback_query: types.CallbackQuery):
+    await callback_query.answer()
     channel_id = int(callback_query.data.split("_")[1])
 
     # Call the API method to bump the channel

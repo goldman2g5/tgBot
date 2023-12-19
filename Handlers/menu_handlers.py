@@ -123,6 +123,7 @@ async def start_payment_process(message: types.Message, payment_data: dict, stat
 
 @dp.callback_query_handler(lambda c: c.data == "back_to_menu")
 async def back_to_menu_handler(callback_query: types.CallbackQuery):
+    await callback_query.answer()
     # Open the main menu
     markup = InlineKeyboardMarkup(row_width=1)
     markup.add(InlineKeyboardButton("Add Channel", callback_data="add_channel"),
@@ -144,6 +145,7 @@ async def back_to_menu_handler(callback_query: types.CallbackQuery):
 
 @dp.callback_query_handler(lambda c: c.data == "add_channel")
 async def add_channel_handler(callback_query: types.CallbackQuery):
+    await callback_query.answer()
     # Set the state
     await AddChannelStates.waiting_for_channel_name.set()
     message = await callback_query.message.answer("Please enter the channel name:",
@@ -155,6 +157,7 @@ async def add_channel_handler(callback_query: types.CallbackQuery):
 
 @dp.callback_query_handler(lambda c: c.data == "manage_channels")
 async def manage_channels_handler(callback_query: types.CallbackQuery):
+    await callback_query.answer()
     # Get the user's ID
     user_id = callback_query.from_user.id
     # Retrieve the user's channels from the API

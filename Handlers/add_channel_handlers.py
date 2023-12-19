@@ -37,16 +37,19 @@ async def cancel_add_channel(callback_query: types.CallbackQuery, state: FSMCont
 
 @dp.callback_query_handler(state=AddChannelStates.waiting_for_check, text="cancel_add_channel")
 async def cancel_add_channel_handler(callback_query: types.CallbackQuery, state: FSMContext):
+    await callback_query.answer()
     await cancel_add_channel(callback_query, state)
 
 
 @dp.callback_query_handler(state=AddChannelStates.waiting_for_channel_description, text="cancel_enter_description")
 async def cancel_enter_description_handler(callback_query: types.CallbackQuery, state: FSMContext):
+    await callback_query.answer()
     await cancel_add_channel(callback_query, state)
 
 
 @dp.callback_query_handler(state=AddChannelStates.waiting_for_channel_name, text="cancel_enter_channel_name")
 async def cancel_enter_channel_name_handler(callback_query: types.CallbackQuery, state: FSMContext):
+    await callback_query.answer()
     await cancel_add_channel(callback_query, state)
 
 
@@ -139,6 +142,7 @@ async def process_add_bot_core(callback_query, state):
 
 @dp.callback_query_handler(state=AddChannelStates.waiting_for_check, text="add_bot")
 async def process_add_bot(callback_query: types.CallbackQuery, state: FSMContext):
+    await callback_query.answer()
     message = await process_add_bot_core(callback_query, state)
     await callback_query.answer(message)
 
@@ -199,6 +203,7 @@ async def process_channel_description(message: types.Message, state: FSMContext)
 
 @dp.callback_query_handler(state=AddChannelStates.waiting_for_language_selection)
 async def process_language_selection(callback_query: types.CallbackQuery, state: FSMContext):
+    await callback_query.answer()
     chosen_language = callback_query.data.split("_")[1]
     await state.update_data(language=chosen_language)
 
@@ -213,6 +218,7 @@ async def process_language_selection(callback_query: types.CallbackQuery, state:
 
 @dp.callback_query_handler(state=AddChannelStates.waiting_for_flag_selection)
 async def process_flag_selection(callback_query: types.CallbackQuery, state: FSMContext):
+    await callback_query.answer()
     chosen_flag = callback_query.data.split("_")[1]
     data = await state.get_data()
 

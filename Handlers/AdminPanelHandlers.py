@@ -12,6 +12,7 @@ from bot import dp, bot
 
 @dp.callback_query_handler(lambda c: c.data == "back_to_admin_menu")
 async def back_to_admin_menu_handler(callback_query: types.CallbackQuery):
+    await callback_query.answer()
     user_id = callback_query.message.from_user.id
 
     # Define the markup based on admin status
@@ -80,6 +81,7 @@ async def cmd_reports(message: types.Message):
 
 @dp.callback_query_handler(lambda c: c.data == 'reports')
 async def display_reports(callback_query: types.CallbackQuery, state: FSMContext):
+    await callback_query.answer()
     data = await state.get_data()
     user_id = callback_query.from_user.id
     api_url = f'https://localhost:7256/api/Auth/Reports/{user_id}'
@@ -114,6 +116,7 @@ async def display_reports(callback_query: types.CallbackQuery, state: FSMContext
 
 @dp.callback_query_handler(lambda c: c.data.startswith('group_details_'))
 async def view_report_group(callback_query: types.CallbackQuery, state: FSMContext):
+    await callback_query.answer()
     channel_id = int(callback_query.data.split('_')[-1])
     user_id = callback_query.from_user.id
     api_url = f'{API_URL}/Auth/Reports/{user_id}'
@@ -205,6 +208,7 @@ async def refresh_reports_list(user_id, chat_id, state: FSMContext):
 
 @dp.callback_query_handler(lambda c: c.data and c.data.startswith('viewreport_'))
 async def view_report_details(callback_query: types.CallbackQuery, state:FSMContext):
+    await callback_query.answer()
     data = await state.get_data()
     parts = callback_query.data.split('_')
     report_id = int(parts[1])  # Convert report_id to an integer
@@ -276,6 +280,7 @@ async def perform_admin_action(action, telegram_id, report_id):
 
 @dp.callback_query_handler(lambda c: c.data and c.data.startswith('close_'))
 async def handle_close_request(callback_query: types.CallbackQuery, state: FSMContext):
+    await callback_query.answer()
     report_id = int(callback_query.data.split('_')[1])
     message_ids = [callback_query.message.message_id]
 
@@ -299,6 +304,7 @@ async def handle_close_request(callback_query: types.CallbackQuery, state: FSMCo
 
 @dp.callback_query_handler(lambda c: c.data and c.data.startswith('delete_'))
 async def handle_delete_request(callback_query: types.CallbackQuery, state: FSMContext):
+    await callback_query.answer()
     report_id = int(callback_query.data.split('_')[1])
     message_ids = [callback_query.message.message_id]
 
@@ -333,6 +339,7 @@ async def handle_delete_request(callback_query: types.CallbackQuery, state: FSMC
 
 @dp.callback_query_handler(lambda c: c.data and c.data.startswith('postpone_'))
 async def handle_postpone_request(callback_query: types.CallbackQuery):
+    await callback_query.answer()
     report_id = int(callback_query.data.split('_')[1])
     message_ids = [callback_query.message.message_id]
 
@@ -352,6 +359,7 @@ class ContactForm(StatesGroup):
 
 @dp.callback_query_handler(lambda c: c.data and c.data.startswith('contact_'))
 async def handle_contact_owner(callback_query: types.CallbackQuery):
+    await callback_query.answer()
     report_id = int(callback_query.data.split('_')[1])
     telegram_id = callback_query.from_user.id
     report_url = f'{API_URL}/Auth/Report/{report_id}/{telegram_id}'
@@ -415,6 +423,7 @@ async def process_custom_message(message: types.Message, state: FSMContext):
 
 @dp.callback_query_handler(lambda c: c.data == 'remove_authorize_msg')
 async def remove_authorization_messages(callback_query: types.CallbackQuery):
+    await callback_query.answer()
     # Deleting the success message
     await bot.delete_message(callback_query.message.chat.id, callback_query.message.message_id)
 
@@ -424,6 +433,7 @@ view_report_cb = CallbackData('report', 'action', 'id')
 
 @dp.callback_query_handler(view_report_cb.filter(action="hide"))
 async def handle_hide(callback_query: types.CallbackQuery, callback_data: dict):
+    await callback_query.answer()
     report_id = int(callback_data['id'])
     telegram_id = callback_query.from_user.id
     status = 1  # "channel hidden"
@@ -441,6 +451,7 @@ async def handle_hide(callback_query: types.CallbackQuery, callback_data: dict):
 
 @dp.callback_query_handler(view_report_cb.filter(action="skip"))
 async def handle_skip(callback_query: types.CallbackQuery, callback_data: dict):
+    await callback_query.answer()
     report_id = int(callback_data['id'])
     telegram_id = callback_query.from_user.id
     status = 0  # "closed"
