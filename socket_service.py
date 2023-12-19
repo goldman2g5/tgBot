@@ -202,9 +202,9 @@ async def listen(websocket, running):
 async def connectToHub():
     while True:
         try:
-            negotiation = requests.post('http://localhost:7256/BotHub/negotiate?negotiateVersion=0').json()
+            negotiation = requests.post('https://tgsearch.info:1488/BotHub/negotiate?negotiateVersion=0').json()
             connectionid = negotiation['connectionId']
-            uri = f"ws://localhost:7256/BotHub?id={connectionid}"
+            uri = f"wss://tgsearch.info:1488/BotHub?id={connectionid}"
             async with websockets.connect(uri) as websocket:
                 await handshake(websocket)
                 running = True
