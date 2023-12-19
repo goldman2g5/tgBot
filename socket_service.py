@@ -9,18 +9,30 @@ import websockets
 from api import *
 from bot import client
 
+# Function for summing two numbers
+def sum_of_two(number1, number2):
+    print("function call")
+    try:
+        num1 = float(number1)
+        num2 = float(number2)
+    except ValueError:
+        return {"error": "Invalid input. Please provide valid numbers."}
+
+    total = num1 + num2
+    return {"result": [total, 228], "bebra": {"zieg": "hail"}, "status": {"trezvost": False}}
 
 async def get_messages_from_past_days(channel_id, number_of_days):
     days_ago = datetime.now() - timedelta(days=number_of_days)
     all_messages = []
     from_message_id = 0
+    message_count = 0
 
     while True:
         messages = await client.api.get_chat_history(
             channel_id,
             from_message_id=from_message_id,
             offset=0,
-            limit=100,
+            limit=1,
             only_local=False,
         )
 
@@ -32,6 +44,8 @@ async def get_messages_from_past_days(channel_id, number_of_days):
             if message_date < days_ago:
                 return all_messages
             all_messages.append(message)
+            message_count += 1
+            print(message_count)
 
         from_message_id = messages.messages[-1].id
 
@@ -47,26 +61,15 @@ def remove_negative_100(n: int) -> int:
 
 
 async def calculate_daily_views(messages):
-    daily_views = defaultdict(int)  # Dictionary to store view counts per day
+    daily_views = defaultdict(lambda: {"views": 0, "last_message_id": None})
     for message in messages:
         if message.interaction_info.view_count is not None and message.date is not None:
             message_date = datetime.utcfromtimestamp(message.date).date()
             view_count = message.interaction_info.view_count
-            daily_views[message_date.isoformat()] += view_count  # Convert date to string
+            daily_views[message_date.isoformat()]["views"] += view_count
+            daily_views[message_date.isoformat()]["last_message_id"] = message.id
     return daily_views
 
-
-# Function for summing two numbers
-def sum_of_two(number1, number2):
-    print("function call")
-    try:
-        num1 = float(number1)
-        num2 = float(number2)
-    except ValueError:
-        return {"error": "Invalid input. Please provide valid numbers."}
-
-    total = num1 + num2
-    return {"result": [total, 228], "bebra": {"zieg": "hail"}, "status": {"trezvost": False}}
 
 
 async def get_daily_views_by_channel(channel_name, number_of_days):
@@ -78,19 +81,28 @@ async def get_daily_views_by_channel(channel_name, number_of_days):
         messages = await get_messages_from_past_days(chatid, number_of_days)
         views_by_day = await calculate_daily_views(messages)
 
-        await client.stop()
-        return views_by_day
+        # Creating a list of dictionaries for each day
+        daily_stats = [
+            {"date": str(day), "views": data["views"], "lastMessageId": data["last_message_id"]}
+            for day, data in views_by_day.items()
+        ]
+
+        # Serialize the list of dictionaries to a JSON formatted string
+        return json.dumps(daily_stats)
 
     except Exception as e:
         logging.error(f"An error occurred: {e}")
-        return {}
+        # Return a JSON formatted empty list
+        return json.dumps([])
 
 
 def toSignalRMessage(data):
     return f'{json.dumps(data)}\u001e'
 
+
 async def async_wrapper(func, **params):
     return await func(**params)
+
 
 async def handshake(websocket):
     await websocket.send(toSignalRMessage({"protocol": "json", "version": 1}))
