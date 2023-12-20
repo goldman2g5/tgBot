@@ -1,22 +1,11 @@
-import asyncio
-import datetime
-import json
-import logging
-from collections import defaultdict
-
-import aiogram.types
-import aiohttp
-import requests
 from aiogram import types
 from aiogram.dispatcher import FSMContext
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ContentType
-from api import *
-from bot import dp, bot
-from bot import dp, bot, client
-from misc import open_menu, create_notifications_menu
-from datetime import datetime, timedelta
+from bot import dp
+from misc import create_notifications_menu
 from aiogram.dispatcher.filters.state import StatesGroup, State
 from socket_service import *
+
 
 async def get_chat_statistics(chat_id):
     await client.stop()
@@ -42,6 +31,7 @@ async def get_chat_statistics(chat_id):
     # logging.info(f"Statistics URL: {stats_url}")
 
     # If you want to actually get the statistics content, you can make an HTTP request to the stats_url
+
 
 @dp.callback_query_handler(lambda c: c.data.startswith("channel_"))
 async def channel_menu_handler(callback_query: types.CallbackQuery):

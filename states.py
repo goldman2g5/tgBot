@@ -11,4 +11,3 @@ class AddChannelStates(StatesGroup):
     waiting_for_language_selection = State()
     waiting_for_flag_selection = State()
     waiting_for_description = State()
-

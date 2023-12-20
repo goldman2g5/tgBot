@@ -1,8 +1,7 @@
 import asyncio
 
-from bot import bot
 from aiogram import types
-from aiogram import Bot, Dispatcher
+from aiogram import Dispatcher
 
 from aiogram.dispatcher import DEFAULT_RATE_LIMIT
 from aiogram.dispatcher.handler import CancelHandler, current_handler
@@ -42,6 +41,7 @@ class ThrottlingMiddleware(BaseMiddleware):
         """
         This handler is called when dispatcher receives a message
 
+        :param data:
         :param message:
         """
         # Get current handler
@@ -81,7 +81,7 @@ class ThrottlingMiddleware(BaseMiddleware):
         else:
             key = f"{self.prefix}_message"
 
-        # Calculate how many time is left till the block ends
+        # Calculate how many times is left till the block ends
         delta = throttled.rate - throttled.delta
 
         # Prevent flooding

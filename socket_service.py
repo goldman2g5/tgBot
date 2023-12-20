@@ -1,4 +1,3 @@
-import websockets
 import asyncio
 import datetime
 from collections import defaultdict
@@ -7,7 +6,8 @@ from bot import bot
 import websockets
 
 from api import *
-from bot import client
+from bot import client, pyro_client
+
 
 # Function for summing two numbers
 def sum_of_two(number1, number2):
@@ -20,6 +20,7 @@ def sum_of_two(number1, number2):
 
     total = num1 + num2
     return {"result": [total, 228], "bebra": {"zieg": "hail"}, "status": {"trezvost": False}}
+
 
 async def get_messages_from_past_days(channel_id, number_of_days):
     days_ago = datetime.now() - timedelta(days=number_of_days)
@@ -71,7 +72,6 @@ async def calculate_daily_views(messages):
     return daily_views
 
 
-
 async def get_daily_views_by_channel(channel_name, number_of_days):
     try:
         chat = await bot.get_chat(channel_name)
@@ -94,6 +94,11 @@ async def get_daily_views_by_channel(channel_name, number_of_days):
         logging.error(f"An error occurred: {e}")
         # Return a JSON formatted empty list
         return json.dumps([])
+
+
+async def getChannelStats(channel_id):
+    async for message in pyro_client.get_chat_history(channel_id):
+        print(message)
 
 
 def toSignalRMessage(data):
@@ -200,6 +205,7 @@ async def listen(websocket, running):
 
 
 async def connectToHub():
+    print("Connecting to hub...")
     while True:
         try:
             negotiation = requests.post('https://tgsearch.info:1488/BotHub/negotiate?negotiateVersion=0').json()

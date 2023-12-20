@@ -150,7 +150,8 @@ async def get_user_id_from_database(user_id: int):
 async def get_channel_id_from_database(channel_id: int):
     try:
         # Make a GET request to the API endpoint for retrieving channel by Telegram ID
-        response = requests.get(f"{API_URL}/Channel/ByTelegramId/{channel_id}", verify=Verify_value, headers=default_headers)
+        response = requests.get(f"{API_URL}/Channel/ByTelegramId/{channel_id}", verify=Verify_value,
+                                headers=default_headers)
         if response.status_code == 200:
             channel_data = response.json()
             if channel_data:
@@ -233,6 +234,7 @@ def get_subscriptions_from_api():
         logger.critical(f"Failed to get subscription types\n Server response - {response.text}")
         return None
 
+
 def get_channel_tag_limit(channel_id):
     channel = getChannelById(channel_id)
     if channel is None:
@@ -259,6 +261,7 @@ def get_channel_tag_limit(channel_id):
 
     logger.error(f"No matching subscription type found for channel ID: {channel_id}")
     return None
+
 
 def subscribe_channel(channel_id, subtype_id):
     try:
