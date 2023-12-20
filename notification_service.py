@@ -115,5 +115,6 @@ async def check_notifications():
 
 
 async def start_notification_service(dispatcher: Dispatcher):
+    print("Starting notification service...")
     scheduler.add_job(check_notifications, IntervalTrigger(seconds=500))
     scheduler.start()
