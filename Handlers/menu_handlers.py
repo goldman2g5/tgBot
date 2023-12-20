@@ -1,15 +1,18 @@
 import base64
+import urllib
+from asyncio import exceptions
+from urllib import parse
+from urllib.parse import parse_qs
 
 from aiogram import types
 from aiogram.dispatcher import FSMContext
-from aiogram.dispatcher.filters import Command
+from aiogram.dispatcher.filters import Command, state
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, LabeledPrice
-
-import socket_service
 from api import *
 from bot import dp, bot
+from misc import open_menu
 from states import AddChannelStates
-from api import default_headers
+from api import API_URL, default_headers
 
 
 def send_message(connection_id, username, user_id):
@@ -44,7 +47,6 @@ async def handle_payment(user_id, payment_data):
 
 @dp.message_handler(Command("start"))
 async def cmd_start(message: types.Message):
-    await socket_service.getChannelStats('czxzxczxc')
     username = message.from_user.username
     user_id = message.from_user.id
     args = message.get_args()

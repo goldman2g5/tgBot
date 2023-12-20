@@ -13,6 +13,7 @@ from bot import dp, bot
 @dp.callback_query_handler(lambda c: c.data == "back_to_admin_menu")
 async def back_to_admin_menu_handler(callback_query: types.CallbackQuery):
     await callback_query.answer()
+    user_id = callback_query.message.from_user.id
 
     # Define the markup based on admin status
     markup = InlineKeyboardMarkup(row_width=1)
@@ -81,7 +82,7 @@ async def cmd_reports(message: types.Message):
 @dp.callback_query_handler(lambda c: c.data == 'reports')
 async def display_reports(callback_query: types.CallbackQuery, state: FSMContext):
     await callback_query.answer()
-    # data = await state.get_data()
+    data = await state.get_data()
     user_id = callback_query.from_user.id
     api_url = f'https://localhost:7256/api/Auth/Reports/{user_id}'
 
@@ -206,9 +207,9 @@ async def refresh_reports_list(user_id, chat_id, state: FSMContext):
 
 
 @dp.callback_query_handler(lambda c: c.data and c.data.startswith('viewreport_'))
-async def view_report_details(callback_query: types.CallbackQuery, state: FSMContext):
+async def view_report_details(callback_query: types.CallbackQuery, state:FSMContext):
     await callback_query.answer()
-    # data = await state.get_data()
+    data = await state.get_data()
     parts = callback_query.data.split('_')
     report_id = int(parts[1])  # Convert report_id to an integer
     is_admin_view = len(parts) > 2 and parts[2] == 'admin'  # Check if it's an admin view
@@ -223,13 +224,13 @@ async def view_report_details(callback_query: types.CallbackQuery, state: FSMCon
 
                 report_data = await response.json()
                 print(report_data)
-                # report_details = (f"Channel Name: {report_data['channelName']}\n"
-                #                   f"Channel URL: {report_data['channelWebUrl']}\n"
-                #                   f"Reportee Name: {report_data['reporteeName']}\n"
-                #                   f"Report Time: {report_data['reportTime']}\n"
-                #                   f"Text: {report_data['text']}\n"
-                #                   f"Reason: {report_data['reason']}\n"
-                #                   f"Status: {report_data['status']}\n")
+                report_details = (f"Channel Name: {report_data['channelName']}\n"
+                                  f"Channel URL: {report_data['channelWebUrl']}\n"
+                                  f"Reportee Name: {report_data['reporteeName']}\n"
+                                  f"Report Time: {report_data['reportTime']}\n"
+                                  f"Text: {report_data['text']}\n"
+                                  f"Reason: {report_data['reason']}\n"
+                                  f"Status: {report_data['status']}\n")
                 channelid = report_data['channelId']
                 userid = await get_user_id_from_database(telegram_id)
 
@@ -250,12 +251,11 @@ async def view_report_details(callback_query: types.CallbackQuery, state: FSMCon
                         types.InlineKeyboardButton("Skip",
                                                    callback_data=view_report_cb.new(action="skip", id=report_id)))
 
-                # report_msg = await bot.send_message(callback_query.from_user.id, report_details, reply_markup=markup)
+                report_msg = await bot.send_message(callback_query.from_user.id, report_details, reply_markup=markup)
             else:
                 await bot.send_message(callback_query.from_user.id, "Could not retrieve the report details.")
 
     await callback_query.answer()
-
 
 async def delete_bot_messages(chat_id, message_ids):
     for msg_id in message_ids:
@@ -309,8 +309,7 @@ async def handle_delete_request(callback_query: types.CallbackQuery, state: FSMC
     message_ids = [callback_query.message.message_id]
 
     confirmation_msg = await bot.send_message(callback_query.from_user.id,
-                                              "Are you sure you want to delete the channel? Type 'y' for Yes or 'n' "
-                                              "for No.")
+                                              "Are you sure you want to delete the channel? Type 'y' for Yes or 'n' for No.")
     message_ids.append(confirmation_msg.message_id)
 
     @dp.message_handler()
@@ -341,7 +340,7 @@ async def handle_delete_request(callback_query: types.CallbackQuery, state: FSMC
 @dp.callback_query_handler(lambda c: c.data and c.data.startswith('postpone_'))
 async def handle_postpone_request(callback_query: types.CallbackQuery):
     await callback_query.answer()
-    # report_id = int(callback_query.data.split('_')[1])
+    report_id = int(callback_query.data.split('_')[1])
     message_ids = [callback_query.message.message_id]
 
     final_msg = await bot.send_message(callback_query.from_user.id, "Report postponed successfully.")
@@ -412,8 +411,7 @@ async def process_custom_message(message: types.Message, state: FSMContext):
                 pass
             else:
                 ugabuga = await response.json()
-                await bot.send_message(message.from_user.id,
-                                       f"Could not create notification {response.status} {ugabuga}")
+                await bot.send_message(message.from_user.id, f"Could not create notification {response.status} {ugabuga}")
                 pass
 
     # Clear the state

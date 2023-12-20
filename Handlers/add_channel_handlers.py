@@ -123,6 +123,8 @@ async def process_add_bot_core(callback_query, state):
 
         # Retrieve the channel ID using bot.get_chat
 
+
+
     await state.update_data(channel_name=channel_name, user_id=user.id, channel_id=channel_id,
                             channel_name_real=channel_name_real)
     sent_message = await callback_query.message.answer(
@@ -148,6 +150,7 @@ async def process_add_bot(callback_query: types.CallbackQuery, state: FSMContext
 async def process_channel_description_core(message, state):
     data = await state.get_data()
     channel_name = data.get("channel_name")
+    user_id = data.get("user_id")
 
     if channel_name is None:
         await message.answer("Error: Failed to get channel information.")

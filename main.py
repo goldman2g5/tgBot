@@ -1,16 +1,21 @@
+import asyncio
+import logging
+
 from aiogram import Dispatcher
 
+from Handlers.channel_menu_handlers import *
+from Handlers.menu_handlers import *
+from Handlers.add_channel_handlers import *
+from Handlers.AdminPanelHandlers import *
 from aiogram.utils import executor
 from notification_service import start_notification_service
 from bot import dp
 from socket_service import *
-from bot import pyro_client
 
 from throthling_middleware import ThrottlingMiddleware
 
 
 async def start_client():
-    print("Starting client...")
     try:
         await client.start()
         me = await client.api.get_me()
@@ -19,24 +24,21 @@ async def start_client():
         logging.error(f"Error starting client: {e}")
 
 
-async def start_pyro_client():
-    print("Starting pyro client")
-    await pyro_client.start()
-
-
 async def on_startup_wrapper(dispatcher: Dispatcher):
-    await asyncio.gather(
-        start_pyro_client(),
-        connectToHub(),
-        start_client(),
-        start_notification_service(dispatcher),
-        dispatcher.start_polling()
-    )
+    asyncio.create_task(connectToHub())
+    asyncio.create_task(start_client())  # Starting the client as a background task
+    await start_notification_service(dispatcher)
 
 
 if __name__ == '__main__':
     # Set the log level for debugging
-    logging.basicConfig(level=logging.INFO)
+    logging.basicConfig(level=logging.INFO, filename="logs.log", filemode="w")
+
+    # Initialize the event loop
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+
+    # Initialize the client (with your settings)
 
     # Setup middlewares
     # dp.middleware.setup(LoggingMiddleware())
