@@ -6,15 +6,20 @@ from pydantic import SecretStr
 from pyrogram import Client as pyroClient
 from aiotdlib.api import UpdateAuthorizationState, AuthorizationStateWaitPhoneNumber, AuthorizationStateWaitCode
 
+import configparser
+
 # Set the log level for debugging
 logging.basicConfig(level=logging.INFO)
 
-API_ID = 23558497
-API_HASH = "2b461873dd2dea7e091f7af28fbe11e1"
-api_hash_secret = SecretStr('API_HASH')
-bot_token = '6488513477:AAHYdfO0qq_JhbsjVEYFyPpbtxUaxMkWomc'
-bot_token_secret = SecretStr('6488513477:AAHYdfO0qq_JhbsjVEYFyPpbtxUaxMkWomc')
-PHONE_NUMBER = "+79168355570"
+config = configparser.ConfigParser()
+config.read('config.ini')
+
+API_ID = config['bot']['API_ID']
+API_HASH = config['bot']['API_HASH']
+api_hash_secret = SecretStr(config['bot']['API_HASH'])
+bot_token = config['bot']['BOT_TOKEN']
+bot_token_secret = SecretStr(config['bot']['BOT_TOKEN'])
+PHONE_NUMBER = config['bot']['PHONE_NUMBER']
 
 client = Client(
      api_id=API_ID,
@@ -30,6 +35,6 @@ pyro_client = pyroClient(
 )
 
 # Initialize the bot and dispatcher
-bot = Bot(token="6488513477:AAHYdfO0qq_JhbsjVEYFyPpbtxUaxMkWomc")
+bot = Bot(token=config['bot']['BOT_TOKEN'])
 storage = MemoryStorage()
 dp = Dispatcher(bot, storage=storage)
