@@ -427,7 +427,6 @@ async def handle_save_changes(callback_query: types.CallbackQuery, state: FSMCon
 
 @dp.callback_query_handler(lambda c: c.data.startswith("tags_"))
 async def tags_handler(callback_query: types.CallbackQuery, state: FSMContext):
-    await callback_query.answer()
     channel_id = int(callback_query.data.split("_")[1])
     channel_name = callback_query.data.split("_")[2]
     callback_arguments = callback_query.data.split("_")
@@ -480,7 +479,6 @@ async def tags_handler(callback_query: types.CallbackQuery, state: FSMContext):
 
 @dp.callback_query_handler(lambda c: c.data.startswith("save_tags_"))
 async def save_tags_handler(callback_query: types.CallbackQuery, state: FSMContext):
-    await callback_query.answer()
     channel_id = int(callback_query.data.split("_")[2])
 
     async with state.proxy() as data:

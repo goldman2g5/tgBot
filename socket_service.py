@@ -1,3 +1,5 @@
+import json
+
 import websockets
 import asyncio
 import datetime
@@ -27,7 +29,6 @@ async def get_messages_from_past_days(channel_id, number_of_days):
     days_ago = datetime.now() - timedelta(days=number_of_days)
     all_messages = []
     from_message_id = 0
-    message_count = 0
 
     while True:
         messages = await client.api.get_chat_history(
@@ -46,8 +47,6 @@ async def get_messages_from_past_days(channel_id, number_of_days):
             if message_date < days_ago:
                 return all_messages
             all_messages.append(message)
-            message_count += 1
-            print(message_count)
 
         from_message_id = messages.messages[-1].id
 
@@ -77,7 +76,7 @@ async def get_daily_views_by_channel(channel_name, number_of_days):
     try:
         chat = await bot.get_chat(channel_name)
         chatid = chat.id
-        print(f"Chat ID: {chatid}")
+        # print(f"Chat ID: {chatid}")
 
         messages = await get_messages_from_past_days(chatid, number_of_days)
         views_by_day = await calculate_daily_views(messages)
@@ -102,7 +101,7 @@ async def getStat(channelName: str):
 
 
 async def get_subscribers_count(channel_name: str):
-    count = pyro_client.get_chat_members_count(channel_name)
+    count = await pyro_client.get_chat_members_count(channel_name)
     return count
 
 
@@ -156,7 +155,8 @@ async def listen(websocket, running):
 
                 function_map = {
                     "sumOfTwo": sum_of_two,
-                    "getDailyViewsByChannel": get_daily_views_by_channel
+                    "getDailyViewsByChannel": get_daily_views_by_channel,
+                    "getSubscribersCount": get_subscribers_count
                 }
 
                 if function_name in function_map:
@@ -213,9 +213,9 @@ async def connectToHub():
     print("Connecting to hub...")
     while True:
         try:
-            negotiation = requests.post('https://tgsearch.info:1488/BotHub/negotiate?negotiateVersion=0').json()
+            negotiation = requests.post('http://localhost:7256/BotHub/negotiate?negotiateVersion=0').json()
             connectionid = negotiation['connectionId']
-            uri = f"wss://tgsearch.info:1488/BotHub?id={connectionid}"
+            uri = f"ws://localhost:7256/BotHub?id={connectionid}"
             async with websockets.connect(uri) as websocket:
                 await handshake(websocket)
                 running = True
