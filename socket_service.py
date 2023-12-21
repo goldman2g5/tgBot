@@ -10,6 +10,7 @@ import websockets
 
 from api import *
 from bot import client, pyro_client
+from bot import Bot
 
 
 # Function for summing two numbers
@@ -105,6 +106,13 @@ async def get_subscribers_count(channel_name: str):
     return count
 
 
+async def get_profile_picture_and_username(user_id: int):
+    print(user_id)
+    pfp = await bot.get_user_profile_photos(user_id, limit=1)
+    username = await pyro_client.get_users(user_id)['username']
+    return {'profile_picture': pfp[0], 'username': username}
+
+
 def toSignalRMessage(data):
     return f'{json.dumps(data)}\u001e'
 
@@ -132,7 +140,7 @@ async def listen(websocket, running):
     while running:
         try:
             get_response = await websocket.recv()
-            print(f"get_response: {get_response}")
+            # print(f"get_response: {get_response}")
             end_of_json = get_response.rfind("}") + 1
             json_string = get_response[:end_of_json]
 
@@ -174,7 +182,7 @@ async def listen(websocket, running):
                 else:
                     result = {"invocationId": invocation_id, "error": "Unknown function"}
             else:
-                print("Not a function call type message. Skipping.")
+                # print("Not a function call type message. Skipping.")
 
                 continue
 
@@ -190,7 +198,7 @@ async def listen(websocket, running):
                 ]
             }
             await websocket.send(toSignalRMessage(start_message))
-            print(result)
+            # print(result)
             json_result = json.dumps(result)
 
             message = {

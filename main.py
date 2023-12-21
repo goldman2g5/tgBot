@@ -31,10 +31,10 @@ async def start_pyro_client():
 
 
 async def on_startup_wrapper(dispatcher: Dispatcher):
+    await start_client()
     await asyncio.gather(
         start_pyro_client(),
         connectToHub(),
-        start_client(),
         start_notification_service(dispatcher),
         dispatcher.start_polling()
     )
