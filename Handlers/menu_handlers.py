@@ -46,7 +46,7 @@ async def handle_payment(user_id, payment_data):
 
 
 @dp.message_handler(Command("start"))
-async def cmd_start(message: types.Message):
+async def cmd_start(message: types.Message, state: FSMContext):
     username = message.from_user.username
     user_id = message.from_user.id
     args = message.get_args()
@@ -54,6 +54,20 @@ async def cmd_start(message: types.Message):
     # Downloading the user's avatar
     avatar_bytes = None  # Default to None in case no profile photo is found
     profile_photos = await bot.get_user_profile_photos(user_id, limit=1)
+    print("jopa")
+    payment_data = {
+        "subscription_type_id": 1,  # Example ID
+        "duration": 12,
+        "autoRenewal": True,
+        "discount": 10,
+        "channel_id": 456,
+        "channel_name": "Example Channel",  # Corrected key name
+        "userId": str(user_id),
+        "username": username
+    }
+
+    # Call the start_payment_process function
+    await start_payment_process(message, payment_data, state)
 
     if profile_photos.photos:  # Check if the user has a profile photo
         photo = profile_photos.photos[0][0]  # latest photo, smallest size
@@ -101,7 +115,7 @@ async def start_payment_process(message: types.Message, payment_data: dict, stat
             invoice_currency = "RUB"
             price_amount = selected_subscription['price'] - (
                         selected_subscription['price'] * payment_data.get('discount', 0) / 100)
-            invoice_prices = [LabeledPrice(label="RUB", amount=price_amount * 100)]
+            invoice_prices = [LabeledPrice(label="RUB", amount=int(price_amount * 100))]
 
             invoice_message = await bot.send_invoice(
                 chat_id=message.from_user.id,
