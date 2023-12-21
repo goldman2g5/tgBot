@@ -1,3 +1,4 @@
+import configparser
 import logging
 from aiogram import Bot, Dispatcher
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
@@ -9,12 +10,15 @@ from aiotdlib.api import UpdateAuthorizationState, AuthorizationStateWaitPhoneNu
 # Set the log level for debugging
 logging.basicConfig(level=logging.INFO)
 
-API_ID = 23558497
-API_HASH = "2b461873dd2dea7e091f7af28fbe11e1"
-api_hash_secret = SecretStr('API_HASH')
-bot_token = '6073155840:AAEq_nWhpl5qHjIpEEHKQ0cq9GeF_l0cJo4'
-bot_token_secret = SecretStr('6073155840:AAEq_nWhpl5qHjIpEEHKQ0cq9GeF_l0cJo4')
-PHONE_NUMBER = "+79103212166"
+config = configparser.ConfigParser()
+config.read('config.ini')
+
+API_ID = config['bot']['API_ID']
+API_HASH = config['bot']['API_HASH']
+api_hash_secret = SecretStr(config['bot']['API_HASH'])
+bot_token = config['bot']['BOT_TOKEN']
+bot_token_secret = SecretStr(config['bot']['BOT_TOKEN'])
+PHONE_NUMBER = config['bot']['PHONE_NUMBER']
 
 client = Client(
      api_id=API_ID,
@@ -22,7 +26,6 @@ client = Client(
      phone_number=PHONE_NUMBER,
      library_path='C:\\Users\\Timar\\td\\tdlib\\bin\\tdjson.dll'
 )
-
 pyro_client = pyroClient(
     "my_account",
     api_id=API_ID,
@@ -30,6 +33,6 @@ pyro_client = pyroClient(
 )
 
 # Initialize the bot and dispatcher
-bot = Bot(token="6073155840:AAEq_nWhpl5qHjIpEEHKQ0cq9GeF_l0cJo4")
+bot = Bot(token=config['bot']['BOT_TOKEN'])
 storage = MemoryStorage()
 dp = Dispatcher(bot, storage=storage)
