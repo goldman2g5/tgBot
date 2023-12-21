@@ -378,6 +378,19 @@ def getChannelById(channel_id):
     except requests.RequestException:
         return None
 
+
+async def get_payment_data(payment_id):
+    url = f'{API_URL}/Subscription/GetPayment/{payment_id}'
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url) as response:
+            if response.status == 200:
+                data = await response.json()
+                return data
+            elif response.status == 404:
+                return "Payment not found"
+            else:
+                return "Error occurred"
+
 # async def get_user_notifications(telegram_id):
 #     """
 #     Function to get the notification settings for a specific user by their Telegram ID.

@@ -54,20 +54,18 @@ async def cmd_start(message: types.Message, state: FSMContext):
     # Downloading the user's avatar
     avatar_bytes = None  # Default to None in case no profile photo is found
     profile_photos = await bot.get_user_profile_photos(user_id, limit=1)
-    print("jopa")
-    payment_data = {
-        "subscription_type_id": 1,  # Example ID
-        "duration": 12,
-        "autoRenewal": True,
-        "discount": 10,
-        "channel_id": 456,
-        "channel_name": "Example Channel",  # Corrected key name
-        "userId": str(user_id),
-        "username": username
-    }
 
-    # Call the start_payment_process function
-    await start_payment_process(message, payment_data, state)
+    if args.startswith("pay"):
+        payment_id = args[3:]  # Extracting the payment ID
+        real_payment_data = await get_payment_data(payment_id)
+
+        if real_payment_data is None or isinstance(real_payment_data, str):
+            await message.reply("Payment data not found or an error occurred.")
+            return
+
+        # Call the start_payment_process function with real data
+        await start_payment_process(message, real_payment_data, state)
+        return  # Stop further processing after handling the payment
 
     if profile_photos.photos:  # Check if the user has a profile photo
         photo = profile_photos.photos[0][0]  # latest photo, smallest size
@@ -107,11 +105,11 @@ async def start_payment_process(message: types.Message, payment_data: dict, stat
     subscriptions = get_subscriptions_from_api()
     if subscriptions is not None:
         selected_subscription = next(
-            (sub for sub in subscriptions if sub['id'] == payment_data["subscription_type_id"]), None)
+            (sub for sub in subscriptions if sub['id'] == payment_data["subscriptionTypeId"]), None)
         if selected_subscription:
-            invoice_title = f"Subscription for {payment_data['channel_name']}"
+            invoice_title = f"Subscription for {payment_data['channelName']}"
             invoice_description = f"{selected_subscription['name']} subscription"
-            invoice_payload = f"{payment_data['channel_id']}_{payment_data['channel_name']}_{selected_subscription['id']}_{selected_subscription['name']}"
+            invoice_payload = f"{payment_data['channelId']}_{payment_data['channelName']}_{selected_subscription['id']}_{selected_subscription['name']}"
             invoice_currency = "RUB"
             price_amount = selected_subscription['price'] - (
                         selected_subscription['price'] * payment_data.get('discount', 0) / 100)
