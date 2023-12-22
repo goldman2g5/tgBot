@@ -16,11 +16,11 @@ from api import API_URL, default_headers
 
 
 def send_message(connection_id, username, user_id):
-    url = "http://tgsearch.info:1488/api/Auth"
-    # url = "https://localhost:7256/api/Auth"
+    # url = "https://tgsearch.info:1488/api/Auth"
+    url = "http://localhost:7256/api/Auth"
     payload = {
         "Username": username,
-        "UserId": user_id,
+        "UserId": str(user_id),
         "Unique_key": ""
     }
 
@@ -34,7 +34,8 @@ def send_message(connection_id, username, user_id):
         print("Message sent successfully")
     else:
         print("Failed to send message")
-        print(response)
+        print(response.text)
+        print(response.json())
 
 
 def bytes_to_base64(data: bytes) -> str:

@@ -382,7 +382,7 @@ def getChannelById(channel_id):
 async def get_payment_data(payment_id):
     url = f'{API_URL}/Subscription/GetPayment/{payment_id}'
     async with aiohttp.ClientSession() as session:
-        async with session.get(url) as response:
+        async with session.get(url, headers=default_headers) as response:
             if response.status == 200:
                 data = await response.json()
                 return data
