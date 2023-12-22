@@ -27,7 +27,8 @@ def sum_of_two(number1, number2):
 
 
 async def get_messages_from_past_days(channel_id, number_of_days):
-    days_ago = datetime.now() - timedelta(days=number_of_days)
+    # Setting days_ago to the start of the day AFTER the last day you want to include
+    days_ago = (datetime.now() - timedelta(days=number_of_days - 1)).replace(hour=0, minute=0, second=0, microsecond=0)
     all_messages = []
     from_message_id = 0
 
@@ -45,9 +46,10 @@ async def get_messages_from_past_days(channel_id, number_of_days):
 
         for message in messages.messages:
             message_date = datetime.utcfromtimestamp(message.date)
-            if message_date < days_ago:
+            if message_date < days_ago:  # Message is older than the specified days
                 return all_messages
-            all_messages.append(message)
+            else:  # Message is within the specified number of days
+                all_messages.append(message)
 
         from_message_id = messages.messages[-1].id
 
