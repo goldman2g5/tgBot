@@ -1,4 +1,5 @@
 import json
+import traceback
 
 import websockets
 import asyncio
@@ -26,32 +27,55 @@ def sum_of_two(number1, number2):
     return {"result": [total, 228], "bebra": {"zieg": "hail"}, "status": {"trezvost": False}}
 
 
-async def get_messages_from_past_days(channel_id, number_of_days):
-    # Setting days_ago to the start of the day AFTER the last day you want to include
+async def get_messages_from_past_days(channel_id, number_of_days, max_retries=5):
+    logging.info(f"Starting to fetch messages from past {number_of_days} days for channel {channel_id}.")
     days_ago = (datetime.now() - timedelta(days=number_of_days - 1)).replace(hour=0, minute=0, second=0, microsecond=0)
     all_messages = []
     from_message_id = 0
+    attempt = 0
 
     while True:
-        messages = await client.api.get_chat_history(
-            channel_id,
-            from_message_id=from_message_id,
-            offset=0,
-            limit=1,
-            only_local=False,
-        )
+        try:
+            messages = await client.api.get_chat_history(
+                channel_id,
+                from_message_id=from_message_id,
+                offset=0,
+                limit=1,
+                only_local=False,
+            )
 
-        if not messages.messages:
-            break
+            # Check if messages or its subpart is None
+            if not messages or not messages.messages:
+                logging.warning(f"No more messages or 'messages.messages' is None for channel {channel_id}.")
+                break
 
-        for message in messages.messages:
-            message_date = datetime.utcfromtimestamp(message.date)
-            if message_date < days_ago:  # Message is older than the specified days
-                return all_messages
-            else:  # Message is within the specified number of days
-                all_messages.append(message)
+            for message in messages.messages:
+                if message:  # Ensure message is not None
+                    message_date = datetime.utcfromtimestamp(message.date)
+                    if message_date < days_ago:
+                        logging.debug(f"Message {message.id} is older than the specified days: {message_date} < {days_ago}")
+                        return all_messages
+                    else:
+                        all_messages.append(message)
+                        logging.debug(f"Appended message {message.id} from {message_date}")
+                else:
+                    logging.warning("Encountered None in messages list.")
 
-        from_message_id = messages.messages[-1].id
+            from_message_id = messages.messages[-1].id  # Prepare for the next iteration
+
+        except asyncio.TimeoutError:
+            if attempt < max_retries:
+                attempt += 1
+                wait_time = 1  # Exponential backoff
+                logging.warning(f"Timeout occurred. Retrying in {wait_time} seconds. Attempt {attempt}/{max_retries}.")
+                await asyncio.sleep(wait_time)  # Wait before the next retry
+                continue  # Retry the request
+            else:
+                logging.error("Max retries reached. Giving up.")
+                break  # Exit the loop if max retries have been reached
+        except Exception as e:
+            logging.error(f"Error while fetching or processing messages: {e}")
+            break  # Exit the loop on other exceptions
 
     return all_messages
 

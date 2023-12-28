@@ -37,6 +37,7 @@ tdlib==0.0.1
 telegram-text==0.1.2
 Telethon==1.29.3
 tenacity==8.2.3
+TgCrypto==1.2.5
 typing_extensions==4.7.1
 tzdata==2023.3
 tzlocal==5.0.1
