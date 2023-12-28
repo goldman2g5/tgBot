@@ -156,9 +156,9 @@ async def get_profile_picture_and_username(user_id):
         avatar_str = bytes_to_base64(avatar_bytes) if avatar_bytes else None
 
         user_data = await pyro_client.get_users(user_id)
-        username = user_data.username
+        username = user_data.first_name
         print(username)
-        return {'avatar': avatar_str, 'username': username}
+        return json.dumps({'avatar': avatar_str, 'username': username})
     except Exception as e:
         print(f"Exception in get_profile_picture_and_username occured: {e}")
         return

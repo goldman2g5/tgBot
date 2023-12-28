@@ -89,7 +89,7 @@ async def fetch_notifications():
         response = requests.get(f'{API_URL}/Notification/GetPromoPosts', verify=False, headers=default_headers)  # Replace with your endpoint
         response.raise_for_status()
         promo_notifications = response.json()
-        print(promo_notifications)
+        # print(promo_notifications)
         for notification in promo_notifications:
             time.sleep(1)
             await send_promo_post_notification(notification)
@@ -114,5 +114,5 @@ async def check_notifications():
 
 async def start_notification_service(dispatcher: Dispatcher):
     print("Starting notification service...")
-    scheduler.add_job(check_notifications, IntervalTrigger(seconds=5))
+    # scheduler.add_job(check_notifications, IntervalTrigger(seconds=5))
     scheduler.start()
