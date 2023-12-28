@@ -6,12 +6,15 @@ import asyncio
 import datetime
 from collections import defaultdict
 from datetime import datetime, timedelta
+
+from Handlers.menu_handlers import bytes_to_base64
 from bot import bot
 import websockets
 
 from api import *
 from bot import client, pyro_client
 from bot import Bot
+import base64
 
 
 # Function for summing two numbers
@@ -27,7 +30,7 @@ def sum_of_two(number1, number2):
     return {"result": [total, 228], "bebra": {"zieg": "hail"}, "status": {"trezvost": False}}
 
 
-async def get_messages_from_past_days(channel_id, number_of_days, max_retries=5):
+async def get_messages_from_past_days(channel_id, number_of_days, max_retries=2):
     logging.info(f"Starting to fetch messages from past {number_of_days} days for channel {channel_id}.")
     days_ago = (datetime.now() - timedelta(days=number_of_days - 1)).replace(hour=0, minute=0, second=0, microsecond=0)
     all_messages = []
@@ -133,11 +136,32 @@ async def get_subscribers_count(channel_name: str):
     return count
 
 
-async def get_profile_picture_and_username(user_id: int):
-    print(user_id)
-    pfp = await bot.get_user_profile_photos(user_id, limit=1)
-    username = await pyro_client.get_users(user_id)['username']
-    return {'profile_picture': pfp[0], 'username': username}
+async def get_profile_picture_and_username(user_id):
+    print(f"userid = {user_id}")
+    try:
+
+        profile_photos = await bot.get_user_profile_photos(user_id, limit=1)
+
+        if profile_photos.photos:
+            photo = profile_photos.photos[0][0]  # latest photo, smallest size
+            file = await bot.get_file(photo.file_id)
+            file_path = file.file_path
+            url = f"https://api.telegram.org/file/bot6073155840:AAEq_nWhpl5qHjIpEEHKQ0cq9GeF_l0cJo4/{file_path}"
+
+            async with aiohttp.ClientSession() as session:
+                async with session.get(url) as response:
+                    avatar_bytes = await response.read()  # byte array of the photo
+
+        # Save user info
+        avatar_str = bytes_to_base64(avatar_bytes) if avatar_bytes else None
+
+        user_data = await pyro_client.get_users(user_id)
+        username = user_data.username
+        print(username)
+        return {'avatar': avatar_str, 'username': username}
+    except Exception as e:
+        print(f"Exception in get_profile_picture_and_username occured: {e}")
+        return
 
 
 def toSignalRMessage(data):
@@ -167,7 +191,7 @@ async def listen(websocket, running):
     while running:
         try:
             get_response = await websocket.recv()
-            # print(f"get_response: {get_response}")
+            print(f"get_response: {get_response}")
             end_of_json = get_response.rfind("}") + 1
             json_string = get_response[:end_of_json]
 
@@ -191,7 +215,8 @@ async def listen(websocket, running):
                 function_map = {
                     "sumOfTwo": sum_of_two,
                     "getDailyViewsByChannel": get_daily_views_by_channel,
-                    "getSubscribersCount": get_subscribers_count
+                    "getSubscribersCount": get_subscribers_count,
+                    "getProfilePictureAndUsername": get_profile_picture_and_username
                 }
 
                 if function_name in function_map:
@@ -209,7 +234,7 @@ async def listen(websocket, running):
                 else:
                     result = {"invocationId": invocation_id, "error": "Unknown function"}
             else:
-                # print("Not a function call type message. Skipping.")
+                print("Not a function call type message. Skipping.")
 
                 continue
 
@@ -225,7 +250,7 @@ async def listen(websocket, running):
                 ]
             }
             await websocket.send(toSignalRMessage(start_message))
-            # print(result)
+            print(result)
             json_result = json.dumps(result)
 
             message = {

@@ -81,7 +81,7 @@ class DescriptionState(StatesGroup):
 
 
 @dp.callback_query_handler(
-    lambda c: c.data.startswith("customization_") and not c.data.startswith("customization_description"))
+lambda c: c.data.startswith("customization_") and not c.data.startswith("customization_description"))
 async def customization_handler(callback_query: types.CallbackQuery, state: FSMContext):
     await callback_query.answer()
     channel_id = int(callback_query.data.split("_")[1])
@@ -250,7 +250,6 @@ async def language_selection_handler(callback_query: types.CallbackQuery, state:
 
 @dp.callback_query_handler(lambda c: c.data.startswith("promotion_"))
 async def promotion_submenu_handler(callback_query: types.CallbackQuery, state: FSMContext):
-    await callback_query.answer()
     channel_id = int(callback_query.data.split("_")[1])
     channel_name = callback_query.data.split("_")[2]
 
@@ -273,7 +272,6 @@ async def promotion_submenu_handler(callback_query: types.CallbackQuery, state: 
 # Handler for the "Enable/Disable Promo Post" button
 @dp.callback_query_handler(lambda c: c.data.startswith("togglepromopost_"))
 async def process_toggle_promo_post_button(callback_query: types.CallbackQuery, state: FSMContext):
-    await callback_query.answer()
     channel_id = int(callback_query.data.split("_")[1])
     channel_name = callback_query.data.split("_")[2]
 
@@ -410,7 +408,6 @@ async def handle_increase_interval(callback_query: types.CallbackQuery, state: F
 
 @dp.callback_query_handler(lambda c: c.data.startswith('savechanges_'))
 async def handle_save_changes(callback_query: types.CallbackQuery, state: FSMContext):
-    await callback_query.answer()
     _, channel_id, channel_name = callback_query.data.split('_')
     async with state.proxy() as data:
         promo_post_time = data.get('promo_post_time', '10:00:00')
@@ -452,6 +449,7 @@ async def tags_handler(callback_query: types.CallbackQuery, state: FSMContext):
     else:
         async with state.proxy() as data:
             tags = await get_channel_tags(channel_id)
+            print(tags)
             data["tags"] = tags
 
     # Update the state with the modified tags dictionary

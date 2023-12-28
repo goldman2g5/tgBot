@@ -45,9 +45,7 @@ async def send_promo_post_notification(notification):
     markup.add(
         types.InlineKeyboardButton("Promo", callback_data=f"promo_{channel_id}_delete"),
     )
-    print(channel_telegram_id)
-    print(channel_name)
-    await bot.send_message(channel_name, "It's time for a promotional post!", reply_markup=markup)
+    await bot.send_message(channel_telegram_id, "It's time for a promotional post!", reply_markup=markup)
 
 
 async def send_report_notification(notification):
@@ -116,5 +114,5 @@ async def check_notifications():
 
 async def start_notification_service(dispatcher: Dispatcher):
     print("Starting notification service...")
-    # scheduler.add_job(check_notifications, IntervalTrigger(seconds=500))
+    scheduler.add_job(check_notifications, IntervalTrigger(seconds=5))
     scheduler.start()
