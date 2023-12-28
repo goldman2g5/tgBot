@@ -53,7 +53,8 @@ async def get_messages_from_past_days(channel_id, number_of_days, max_retries=5)
                 if message:  # Ensure message is not None
                     message_date = datetime.utcfromtimestamp(message.date)
                     if message_date < days_ago:
-                        logging.debug(f"Message {message.id} is older than the specified days: {message_date} < {days_ago}")
+                        logging.debug(
+                            f"Message {message.id} is older than the specified days: {message_date} < {days_ago}")
                         return all_messages
                     else:
                         all_messages.append(message)
@@ -243,13 +244,20 @@ async def listen(websocket, running):
             break
 
 
+BASE_URL = API_URL.rsplit('/', 1)[0]
+
+
 async def connectToHub():
     print("Connecting to hub...")
     while True:
         try:
-            negotiation = requests.post('http://localhost:7256/BotHub/negotiate?negotiateVersion=0').json()
+            # Use BASE_URL for negotiation endpoint
+            negotiation = requests.post(f'{BASE_URL}/BotHub/negotiate?negotiateVersion=0').json()
             connectionid = negotiation['connectionId']
-            uri = f"ws://localhost:7256/BotHub?id={connectionid}"
+            # Use BASE_URL to form the WebSocket URI
+            ws_scheme = 'wss' if BASE_URL.startswith('https') else 'ws'
+            uri = f"{ws_scheme}://{BASE_URL.split('://')[1]}/BotHub?id={connectionid}"
+            # print(uri)
             async with websockets.connect(uri) as websocket:
                 await handshake(websocket)
                 running = True
