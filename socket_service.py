@@ -13,7 +13,7 @@ import websockets
 
 from api import *
 from bot import client, pyro_client
-from bot import Bot
+from bot import Bot, bot_token
 import base64
 
 
@@ -36,7 +36,7 @@ async def get_messages_from_past_days(channel_id, number_of_days, max_retries=2)
     all_messages = []
     from_message_id = 0
     attempt = 0
-
+    first = 0
     while True:
         try:
             messages = await client.api.get_chat_history(
@@ -54,6 +54,9 @@ async def get_messages_from_past_days(channel_id, number_of_days, max_retries=2)
 
             for message in messages.messages:
                 if message:  # Ensure message is not None
+                    if first == 0:
+                        print(message)
+                        first = 1
                     message_date = datetime.utcfromtimestamp(message.date)
                     if message_date < days_ago:
                         logging.debug(
@@ -131,37 +134,64 @@ async def getStat(channelName: str):
     resp = pyro_client.get_chat_history(channelName)
 
 
-async def get_subscribers_count(channel_name: str):
-    count = await pyro_client.get_chat_members_count(channel_name)
+async def get_subscribers_count(channel_id):
+    count = await pyro_client.get_chat_members_count(channel_id)
     return count
+
+
+async def get_subscribers_count_batch(channel_ids: List[int], batch_size: int = 100):
+    semaphore = asyncio.Semaphore(10)  # Adjust the number as appropriate for your use case
+
+    async def get_count(channel_name):
+        async with semaphore:
+            try:
+                count = await pyro_client.get_chat_members_count(channel_name)
+                return channel_name, count
+            except Exception as e:
+                print(f"Error fetching data for {channel_name}: {e}")  # Handle errors more gracefully in real use
+                return channel_name, None
+
+    batches = [channel_ids[i:i + batch_size] for i in range(0, len(channel_ids), batch_size)]
+    counts = {}
+    for batch in batches:
+        tasks = [get_count(channel) for channel in batch]
+        results = await asyncio.gather(*tasks)
+        for channel_name, count in results:
+            counts[channel_name] = count
+
+    return json.dumps(counts)
 
 
 async def get_profile_picture_and_username(user_id):
     print(f"userid = {user_id}")
     try:
-
+        avatar_bytes = None  # Default to None in case no profile photo is found
         profile_photos = await bot.get_user_profile_photos(user_id, limit=1)
 
         if profile_photos.photos:
-            photo = profile_photos.photos[0][0]  # latest photo, smallest size
+            # Choose a larger size for the profile photo if available
+            photo = profile_photos.photos[0][0]
             file = await bot.get_file(photo.file_id)
             file_path = file.file_path
-            url = f"https://api.telegram.org/file/bot6073155840:AAEq_nWhpl5qHjIpEEHKQ0cq9GeF_l0cJo4/{file_path}"
+            url = f"https://api.telegram.org/file/bot{bot_token}/{file_path}"
 
             async with aiohttp.ClientSession() as session:
                 async with session.get(url) as response:
-                    avatar_bytes = await response.read()  # byte array of the photo
+                    if response.status == 200:
+                        avatar_bytes = await response.read()  # byte array of the photo
 
-        # Save user info
-        avatar_str = bytes_to_base64(avatar_bytes) if avatar_bytes else None
+        # Convert bytes to base64 string
+        avatar_base64 = base64.b64encode(avatar_bytes).decode('utf-8') if avatar_bytes else None
 
+        # Get user info
         user_data = await pyro_client.get_users(user_id)
-        username = user_data.first_name
-        print(username)
-        return json.dumps({'avatar': avatar_str, 'username': username})
+        username = user_data.first_name  # or user_data.username based on what you want
+
+        return json.dumps({'avatar': avatar_base64, 'username': username})
+
     except Exception as e:
-        print(f"Exception in get_profile_picture_and_username occured: {e}")
-        return
+        print(f"Exception in get_profile_picture_and_username occurred: {e}")
+        return json.dumps({'error': str(e)})
 
 
 def toSignalRMessage(data):
@@ -216,7 +246,8 @@ async def listen(websocket, running):
                     "sumOfTwo": sum_of_two,
                     "getDailyViewsByChannel": get_daily_views_by_channel,
                     "getSubscribersCount": get_subscribers_count,
-                    "getProfilePictureAndUsername": get_profile_picture_and_username
+                    "getProfilePictureAndUsername": get_profile_picture_and_username,
+                    "get_subscribers_count_batch": get_subscribers_count_batch
                 }
 
                 if function_name in function_map:
