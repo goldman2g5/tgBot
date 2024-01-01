@@ -12,63 +12,26 @@ from bot import bot
 import websockets
 
 from api import *
-from bot import client, pyro_client
+from bot import pyro_client
 from bot import Bot, bot_token
 import base64
 
 
-# Function for summing two numbers
-def sum_of_two(number1, number2):
-    print("function call")
-    try:
-        num1 = float(number1)
-        num2 = float(number2)
-    except ValueError:
-        return {"error": "Invalid input. Please provide valid numbers."}
-
-    total = num1 + num2
-    return {"result": [total, 228], "bebra": {"zieg": "hail"}, "status": {"trezvost": False}}
-
-
-async def get_messages_from_past_days(channel_id, number_of_days, max_retries=2):
-    logging.info(f"Starting to fetch messages from past {number_of_days} days for channel {channel_id}.")
-    days_ago = (datetime.now() - timedelta(days=number_of_days - 1)).replace(hour=0, minute=0, second=0, microsecond=0)
+async def get_messages_from_past_days(chat_id, number_of_days, max_retries=2):
+    logging.info(f"Starting to fetch messages from past {number_of_days} days for channel {chat_id}.")
+    days_ago = (datetime.utcnow() - timedelta(days=number_of_days)).replace(hour=0, minute=0, second=0, microsecond=0)
     all_messages = []
-    from_message_id = 0
     attempt = 0
-    first = 0
+
     while True:
         try:
-            messages = await client.api.get_chat_history(
-                channel_id,
-                from_message_id=from_message_id,
-                offset=0,
-                limit=1,
-                only_local=False,
-            )
-
-            # Check if messages or its subpart is None
-            if not messages or not messages.messages:
-                logging.warning(f"No more messages or 'messages.messages' is None for channel {channel_id}.")
-                break
-
-            for message in messages.messages:
-                if message:  # Ensure message is not None
-                    if first == 0:
-                        print(message)
-                        first = 1
-                    message_date = datetime.utcfromtimestamp(message.date)
-                    if message_date < days_ago:
-                        logging.debug(
-                            f"Message {message.id} is older than the specified days: {message_date} < {days_ago}")
-                        return all_messages
-                    else:
-                        all_messages.append(message)
-                        logging.debug(f"Appended message {message.id} from {message_date}")
-                else:
-                    logging.warning("Encountered None in messages list.")
-
-            from_message_id = messages.messages[-1].id  # Prepare for the next iteration
+            async for message in pyro_client.get_chat_history(chat_id):
+                if message.date < days_ago:  # Directly use message.date as a datetime object
+                    logging.debug(
+                        f"Message {message.id} is older than the specified days: {message.date} < {days_ago}")
+                    return all_messages
+                all_messages.append(message)
+                logging.debug(f"Appended message {message.id} from {message.date}")
 
         except asyncio.TimeoutError:
             if attempt < max_retries:
@@ -87,20 +50,13 @@ async def get_messages_from_past_days(channel_id, number_of_days, max_retries=2)
     return all_messages
 
 
-def remove_negative_100(n: int) -> int:
-    s = str(n)
-    prefix = "-100"
-    if s.startswith(prefix):
-        return int(s[len(prefix):])
-    return n
-
-
 async def calculate_daily_views(messages):
     daily_views = defaultdict(lambda: {"views": 0, "last_message_id": None})
     for message in messages:
-        if message.interaction_info.view_count is not None and message.date is not None:
-            message_date = datetime.utcfromtimestamp(message.date).date()
-            view_count = message.interaction_info.view_count
+        if hasattr(message, 'views') and message.views and message.date:
+            # Ensure message.date is used as a datetime object throughout
+            message_date = message.date.date()  # Extracting only the date part
+            view_count = message.views
             daily_views[message_date.isoformat()]["views"] += view_count
             daily_views[message_date.isoformat()]["last_message_id"] = message.id
     return daily_views
@@ -108,11 +64,10 @@ async def calculate_daily_views(messages):
 
 async def get_daily_views_by_channel(channel_name, number_of_days):
     try:
-        chat = await bot.get_chat(channel_name)
-        chatid = chat.id
-        # print(f"Chat ID: {chatid}")
+        chat = await pyro_client.get_chat(channel_name)
+        chat_id = chat.id
 
-        messages = await get_messages_from_past_days(chatid, number_of_days)
+        messages = await get_messages_from_past_days(chat_id, number_of_days)
         views_by_day = await calculate_daily_views(messages)
 
         # Creating a list of dictionaries for each day
@@ -131,7 +86,8 @@ async def get_daily_views_by_channel(channel_name, number_of_days):
 
 
 async def getStat(channelName: str):
-    resp = pyro_client.get_chat_history(channelName)
+    async for message in pyro_client.get_chat_history(channelName):
+        print(message)
 
 
 async def get_subscribers_count(channel_id):
@@ -243,7 +199,6 @@ async def listen(websocket, running):
                 invocation_id = function_call_data.get("invocationId", "unknown")
 
                 function_map = {
-                    "sumOfTwo": sum_of_two,
                     "getDailyViewsByChannel": get_daily_views_by_channel,
                     "getSubscribersCount": get_subscribers_count,
                     "getProfilePictureAndUsername": get_profile_picture_and_username,
