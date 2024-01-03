@@ -26,7 +26,7 @@ async def get_messages_from_past_days(chat_id, number_of_days, max_retries=2):
     while True:
         try:
             async for message in pyro_client.get_chat_history(chat_id):
-                if message.date < days_ago:  # Directly use message.date as a datetime object
+                if message.date < days_ago:
                     logging.debug(
                         f"Message {message.id} is older than the specified days: {message.date} < {days_ago}")
                     return all_messages
@@ -38,14 +38,14 @@ async def get_messages_from_past_days(chat_id, number_of_days, max_retries=2):
                 attempt += 1
                 wait_time = 1  # Exponential backoff
                 logging.warning(f"Timeout occurred. Retrying in {wait_time} seconds. Attempt {attempt}/{max_retries}.")
-                await asyncio.sleep(wait_time)  # Wait before the next retry
+                await asyncio.sleep(wait_time)
                 continue  # Retry the request
             else:
                 logging.error("Max retries reached. Giving up.")
-                break  # Exit the loop if max retries have been reached
+                break
         except Exception as e:
             logging.error(f"Error while fetching or processing messages: {e}")
-            break  # Exit the loop on other exceptions
+            break
 
     return all_messages
 
@@ -96,24 +96,23 @@ async def get_subscribers_count(channel_id):
 
 
 async def get_subscribers_count_batch(channel_ids: List[int], batch_size: int = 100):
-    semaphore = asyncio.Semaphore(10)  # Adjust the number as appropriate for your use case
+    semaphore = asyncio.Semaphore(10)
 
     async def get_count(channel_name):
         async with semaphore:
             try:
                 count = await pyro_client.get_chat_members_count(channel_name)
-                return channel_name, count
             except Exception as e:
-                print(f"Error fetching data for {channel_name}: {e}")  # Handle errors more gracefully in real use
-                return channel_name, None
+                print(f"Error fetching data for {channel_name}: {e}")
+                count = 0  # Set count to 0 in case of error
+            return channel_name, count
 
     batches = [channel_ids[i:i + batch_size] for i in range(0, len(channel_ids), batch_size)]
     counts = {}
     for batch in batches:
         tasks = [get_count(channel) for channel in batch]
         results = await asyncio.gather(*tasks)
-        for channel_name, count in results:
-            counts[channel_name] = count
+        counts.update({channel_name: count for channel_name, count in results})
 
     return json.dumps(counts)
 
