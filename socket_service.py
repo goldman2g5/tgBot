@@ -19,15 +19,22 @@ import base64
 queue = asyncio.Queue()
 
 
-async def get_messages_from_past_days(chat_id, number_of_days, max_retries=2):
+async def get_messages_from_past_days(chat_id, number_of_days, start_date=None, max_retries=2):
+    if start_date is None:
+        # Set start_date to be 3 days before now for testing
+        start_date = (datetime.utcnow() - timedelta(days=3)).replace(hour=0, minute=0, second=0, microsecond=0)
+
     logging.info(f"Starting to fetch messages from past {number_of_days} days for channel {chat_id}.")
     days_ago = (datetime.utcnow() - timedelta(days=number_of_days)).replace(hour=0, minute=0, second=0, microsecond=0)
     all_messages = []
     attempt = 0
+    yield_object = pyro_client.get_chat_history(
+        chat_id, offset_date=start_date) if start_date else pyro_client.get_chat_history(chat_id)
 
     while True:
         try:
-            async for message in pyro_client.get_chat_history(chat_id):
+            # Using offset_date if start_date is provided
+            async for message in yield_object:
                 if message.date < days_ago:
                     logging.debug(
                         f"Message {message.id} is older than the specified days: {message.date} < {days_ago}")
@@ -64,12 +71,13 @@ async def calculate_daily_views(messages):
     return daily_views
 
 
-async def get_daily_views_by_channel(channel_name, number_of_days):
+async def get_daily_views_by_channel(channel_name, number_of_days, offset_date=None):
     try:
         chat = await pyro_client.get_chat(channel_name)
         chat_id = chat.id
 
-        messages = await get_messages_from_past_days(chat_id, number_of_days)
+        # Pass the offset_date to the get_messages_from_past_days function
+        messages = await get_messages_from_past_days(chat_id, number_of_days, start_date=offset_date)
         views_by_day = await calculate_daily_views(messages)
 
         # Creating a list of dictionaries for each day
@@ -278,6 +286,7 @@ async def connectToHub():
 
 
     connection_closed_printed = False
+    workers = []
 
     while True:
         try:
