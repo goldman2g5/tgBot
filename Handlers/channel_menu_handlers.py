@@ -12,46 +12,17 @@ from aiogram.dispatcher import FSMContext
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ContentType
 from api import *
 from bot import dp, bot
-from bot import dp, bot, client
+from bot import dp, bot
 from misc import open_menu, create_notifications_menu
 from datetime import datetime, timedelta
 from aiogram.dispatcher.filters.state import StatesGroup, State
 from socket_service import *
-
-async def get_chat_statistics(chat_id):
-    await client.stop()
-
-    await client.start()
-
-    me = await client.api.get_me()
-    logging.info(f"Successfully logged in as {me.json()}")
-
-    chat_id = remove_negative_100(chat_id)
-
-    supergroup = await client.get_supergroup(supergroup_id=chat_id, force_update=True)
-    print(supergroup.id)
-
-    stats_url = await client.api.get_supergroup_full_info(supergroup_id=supergroup.id)
-
-    print(stats_url)
-
-    await client.stop()
-
-    # stats = await client.api.get_chat(chat_id)
-
-    # logging.info(f"Statistics URL: {stats_url}")
-
-    # If you want to actually get the statistics content, you can make an HTTP request to the stats_url
 
 @dp.callback_query_handler(lambda c: c.data.startswith("channel_"))
 async def channel_menu_handler(callback_query: types.CallbackQuery):
     await callback_query.answer()
     channel_id = int(callback_query.data.split("_")[1])
     channel_name = callback_query.data.split("_")[2]
-
-    # views_by_day = await get_daily_views_by_channel(channel_name, 50)
-    # for day, views in views_by_day.items():
-    #     print(f"{day}: {views} views")
 
     # Create inline buttons for channel menu
     markup = InlineKeyboardMarkup(row_width=1)

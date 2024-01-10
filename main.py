@@ -22,14 +22,14 @@ from aiogram_dialog import DialogRegistry
 from throthling_middleware import ThrottlingMiddleware
 
 
-async def start_client():
-    print("Starting client...")
-    try:
-        await client.start()
-        me = await client.api.get_me()
-        logging.info(f"Successfully logged in as {me.json()}")
-    except Exception as e:
-        logging.error(f"Error starting client: {e}")
+# async def start_client():
+#     print("Starting client...")
+#     try:
+#         await client.start()
+#         me = await client.api.get_me()
+#         logging.info(f"Successfully logged in as {me.json()}")
+#     except Exception as e:
+#         logging.error(f"Error starting client: {e}")
 
 
 async def start_pyro_client():
@@ -38,7 +38,7 @@ async def start_pyro_client():
 
 
 async def on_startup_wrapper(dispatcher: Dispatcher):
-    await start_client()
+    # await start_client()
     await asyncio.gather(
         start_pyro_client(),
         connectToHub(),

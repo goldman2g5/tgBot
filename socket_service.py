@@ -12,107 +12,72 @@ from bot import bot
 import websockets
 
 from api import *
-from bot import client, pyro_client
+from bot import pyro_client
 from bot import Bot, bot_token
 import base64
 
-
-# Function for summing two numbers
-def sum_of_two(number1, number2):
-    print("function call")
-    try:
-        num1 = float(number1)
-        num2 = float(number2)
-    except ValueError:
-        return {"error": "Invalid input. Please provide valid numbers."}
-
-    total = num1 + num2
-    return {"result": [total, 228], "bebra": {"zieg": "hail"}, "status": {"trezvost": False}}
+queue = asyncio.Queue()
 
 
-async def get_messages_from_past_days(channel_id, number_of_days, max_retries=2):
-    logging.info(f"Starting to fetch messages from past {number_of_days} days for channel {channel_id}.")
-    days_ago = (datetime.now() - timedelta(days=number_of_days - 1)).replace(hour=0, minute=0, second=0, microsecond=0)
+async def get_messages_from_past_days(chat_id, number_of_days, start_date=None, max_retries=2):
+    if start_date is None:
+        # Set start_date to be 3 days before now for testing
+        start_date = (datetime.utcnow() - timedelta(days=3)).replace(hour=0, minute=0, second=0, microsecond=0)
+
+    logging.info(f"Starting to fetch messages from past {number_of_days} days for channel {chat_id}.")
+    days_ago = (datetime.utcnow() - timedelta(days=number_of_days)).replace(hour=0, minute=0, second=0, microsecond=0)
     all_messages = []
-    from_message_id = 0
     attempt = 0
-    first = 0
+    yield_object = pyro_client.get_chat_history(
+        chat_id, offset_date=start_date) if start_date else pyro_client.get_chat_history(chat_id)
+
     while True:
         try:
-            messages = await client.api.get_chat_history(
-                channel_id,
-                from_message_id=from_message_id,
-                offset=0,
-                limit=1,
-                only_local=False,
-            )
-
-            # Check if messages or its subpart is None
-            if not messages or not messages.messages:
-                logging.warning(f"No more messages or 'messages.messages' is None for channel {channel_id}.")
-                break
-
-            for message in messages.messages:
-                if message:  # Ensure message is not None
-                    if first == 0:
-                        print(message)
-                        first = 1
-                    message_date = datetime.utcfromtimestamp(message.date)
-                    if message_date < days_ago:
-                        logging.debug(
-                            f"Message {message.id} is older than the specified days: {message_date} < {days_ago}")
-                        return all_messages
-                    else:
-                        all_messages.append(message)
-                        logging.debug(f"Appended message {message.id} from {message_date}")
-                else:
-                    logging.warning("Encountered None in messages list.")
-
-            from_message_id = messages.messages[-1].id  # Prepare for the next iteration
+            # Using offset_date if start_date is provided
+            async for message in yield_object:
+                if message.date < days_ago:
+                    logging.debug(
+                        f"Message {message.id} is older than the specified days: {message.date} < {days_ago}")
+                    return all_messages
+                all_messages.append(message)
+                logging.debug(f"Appended message {message.id} from {message.date}")
 
         except asyncio.TimeoutError:
             if attempt < max_retries:
                 attempt += 1
                 wait_time = 1  # Exponential backoff
                 logging.warning(f"Timeout occurred. Retrying in {wait_time} seconds. Attempt {attempt}/{max_retries}.")
-                await asyncio.sleep(wait_time)  # Wait before the next retry
+                await asyncio.sleep(wait_time)
                 continue  # Retry the request
             else:
                 logging.error("Max retries reached. Giving up.")
-                break  # Exit the loop if max retries have been reached
+                break
         except Exception as e:
             logging.error(f"Error while fetching or processing messages: {e}")
-            break  # Exit the loop on other exceptions
+            break
 
     return all_messages
-
-
-def remove_negative_100(n: int) -> int:
-    s = str(n)
-    prefix = "-100"
-    if s.startswith(prefix):
-        return int(s[len(prefix):])
-    return n
 
 
 async def calculate_daily_views(messages):
     daily_views = defaultdict(lambda: {"views": 0, "last_message_id": None})
     for message in messages:
-        if message.interaction_info.view_count is not None and message.date is not None:
-            message_date = datetime.utcfromtimestamp(message.date).date()
-            view_count = message.interaction_info.view_count
+        if hasattr(message, 'views') and message.views and message.date:
+            # Ensure message.date is used as a datetime object throughout
+            message_date = message.date.date()  # Extracting only the date part
+            view_count = message.views
             daily_views[message_date.isoformat()]["views"] += view_count
             daily_views[message_date.isoformat()]["last_message_id"] = message.id
     return daily_views
 
 
-async def get_daily_views_by_channel(channel_name, number_of_days):
+async def get_daily_views_by_channel(channel_name, number_of_days, offset_date=None):
     try:
-        chat = await bot.get_chat(channel_name)
-        chatid = chat.id
-        # print(f"Chat ID: {chatid}")
+        chat = await pyro_client.get_chat(channel_name)
+        chat_id = chat.id
 
-        messages = await get_messages_from_past_days(chatid, number_of_days)
+        # Pass the offset_date to the get_messages_from_past_days function
+        messages = await get_messages_from_past_days(chat_id, number_of_days, start_date=offset_date)
         views_by_day = await calculate_daily_views(messages)
 
         # Creating a list of dictionaries for each day
@@ -131,7 +96,8 @@ async def get_daily_views_by_channel(channel_name, number_of_days):
 
 
 async def getStat(channelName: str):
-    resp = pyro_client.get_chat_history(channelName)
+    async for message in pyro_client.get_chat_history(channelName):
+        print(message)
 
 
 async def get_subscribers_count(channel_id):
@@ -140,24 +106,23 @@ async def get_subscribers_count(channel_id):
 
 
 async def get_subscribers_count_batch(channel_ids: List[int], batch_size: int = 100):
-    semaphore = asyncio.Semaphore(10)  # Adjust the number as appropriate for your use case
+    semaphore = asyncio.Semaphore(10)
 
     async def get_count(channel_name):
         async with semaphore:
             try:
                 count = await pyro_client.get_chat_members_count(channel_name)
-                return channel_name, count
             except Exception as e:
-                print(f"Error fetching data for {channel_name}: {e}")  # Handle errors more gracefully in real use
-                return channel_name, None
+                print(f"Error fetching data for {channel_name}: {e}")
+                count = 0  # Set count to 0 in case of error
+            return channel_name, count
 
     batches = [channel_ids[i:i + batch_size] for i in range(0, len(channel_ids), batch_size)]
     counts = {}
     for batch in batches:
         tasks = [get_count(channel) for channel in batch]
         results = await asyncio.gather(*tasks)
-        for channel_name, count in results:
-            counts[channel_name] = count
+        counts.update({channel_name: count for channel_name, count in results})
 
     return json.dumps(counts)
 
@@ -243,7 +208,6 @@ async def listen(websocket, running):
                 invocation_id = function_call_data.get("invocationId", "unknown")
 
                 function_map = {
-                    "sumOfTwo": sum_of_two,
                     "getDailyViewsByChannel": get_daily_views_by_channel,
                     "getSubscribersCount": get_subscribers_count,
                     "getProfilePictureAndUsername": get_profile_picture_and_username,
@@ -251,51 +215,15 @@ async def listen(websocket, running):
                 }
 
                 if function_name in function_map:
-                    try:
-                        if asyncio.iscoroutinefunction(function_map[function_name]):
-                            result = await async_wrapper(function_map[function_name], **parameters)
-                        else:
-                            result = function_map[function_name](**parameters)
-                        result = {"invocationId": invocation_id, "data": result}
-                    except TypeError as e:
-                        result = {"invocationId": invocation_id,
-                                  "error": f"Invalid parameters for {function_name}: {str(e)}"}
-                    except Exception as e:
-                        result = {"invocationId": invocation_id, "error": f"Error in {function_name}: {str(e)}"}
+                    # Just enqueue the task with necessary context and let the worker handle execution
+                    await queue.put((function_map[function_name], parameters, invocation_id,
+                                     asyncio.iscoroutinefunction(function_map[function_name])))
                 else:
-                    result = {"invocationId": invocation_id, "error": "Unknown function"}
+                    print(f"Unknown function: {function_name}")
             else:
                 print("Not a function call type message. Skipping.")
 
                 continue
-
-            start_message = {
-                "type": 1,
-                "invocationId": "invocation_id",
-                "target": "ReceiveStream",
-                "arguments": [
-                    'Bebra'
-                ],
-                "streamIds": [
-                    "stream_id"
-                ]
-            }
-            await websocket.send(toSignalRMessage(start_message))
-            print(result)
-            json_result = json.dumps(result)
-
-            message = {
-                "type": 2,
-                "invocationId": "stream_id",
-                "item": f'{json_result}'
-            }
-            await websocket.send(toSignalRMessage(message))
-
-            completion_message = {
-                "type": 3,
-                "invocationId": "stream_id"
-            }
-            await websocket.send(toSignalRMessage(completion_message))
         except websockets.exceptions.ConnectionClosed:
             break
 
@@ -305,6 +233,61 @@ BASE_URL = API_URL.rsplit('/', 1)[0]
 
 async def connectToHub():
     print("Connecting to hub...")
+
+    async def worker(queue, websocket):
+        while True:
+            func, params, invocation_id, is_coroutine = await queue.get()
+
+            try:
+                # Execute the function and handle the result
+                if is_coroutine:
+                    result = await func(**params)
+                else:
+                    result = func(**params)
+
+                # Prepare the result message
+                result_message = {"invocationId": invocation_id, "data": result}
+
+            except TypeError as e:
+                result_message = {"invocationId": invocation_id, "error": f"Invalid parameters for function: {str(e)}"}
+            except Exception as e:
+                result_message = {"invocationId": invocation_id, "error": f"Error in function execution: {str(e)}"}
+
+            finally:
+                # Send the result back
+                start_message = {
+                    "type": 1,
+                    "invocationId": "invocation_id",
+                    "target": "ReceiveStream",
+                    "arguments": [
+                        'Bebra'
+                    ],
+                    "streamIds": [
+                        "stream_id"
+                    ]
+                }
+                await websocket.send(toSignalRMessage(start_message))
+                print(result_message)
+                json_result = json.dumps(result_message)
+
+                message = {
+                    "type": 2,
+                    "invocationId": "stream_id",
+                    "item": f'{json_result}'
+                }
+                await websocket.send(toSignalRMessage(message))
+
+                completion_message = {
+                    "type": 3,
+                    "invocationId": "stream_id"
+                }
+                await websocket.send(toSignalRMessage(completion_message))
+                queue.task_done()
+
+
+    connection_closed_printed = False
+    workers = []
+
     while True:
         try:
             # Use BASE_URL for negotiation endpoint
@@ -317,11 +300,18 @@ async def connectToHub():
             async with websockets.connect(uri) as websocket:
                 await handshake(websocket)
                 running = True
+                workers = [asyncio.create_task(worker(queue, websocket)) for _ in range(1)]
                 listen_task = asyncio.create_task(listen(websocket, running))
                 ping_task = asyncio.create_task(start_pinging(websocket, running))
+                connection_closed_printed = False
 
                 await asyncio.gather(listen_task, ping_task)
         except Exception as e:
-            print(f"Error: {e}")
-            print("Connection closed, attempting to reconnect...")
+            for worker in workers:
+                worker.cancel()
+            if not connection_closed_printed:
+                print(f"Error: {e}")
+                print("Connection closed")
+                print("Looking for connection...")
+                connection_closed_printed = True
             await asyncio.sleep(5)
