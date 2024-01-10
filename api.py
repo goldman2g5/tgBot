@@ -4,8 +4,8 @@ from typing import List
 import aiohttp
 import requests
 
-API_URL = "http://localhost:7256/api"
-#API_URL = "https://tgsearch.info:1488/api"
+# API_URL = "http://localhost:7256/api"
+API_URL = "https://tgsearch.info:1488/api"
 API_KEY = "7bdf1ca44d84484c9864c06c0aedc1beb740909b02e4404ebafd381db897e1a5387567f8b42f47c7b5192eac60547460e0003c11fd804d1a966a30eacd939a3acaa9a352797f436aad6cd14f27517554"
 Verify_value = False
 
@@ -51,6 +51,7 @@ async def save_channel_information(channel_name: str, channel_description: str, 
         "flag": flag,
         "url": channel_url
     }
+    print(data)
 
     response = requests.post(api_url, json=data, verify=Verify_value, headers=default_headers)
     if response.status_code == 201:
@@ -150,7 +151,8 @@ async def get_user_id_from_database(user_id: int):
 async def get_channel_id_from_database(channel_id: int):
     try:
         # Make a GET request to the API endpoint for retrieving channel by Telegram ID
-        response = requests.get(f"{API_URL}/Channel/ByTelegramId/{channel_id}", verify=Verify_value, headers=default_headers)
+        response = requests.get(f"{API_URL}/Channel/ByTelegramId/{channel_id}", verify=Verify_value,
+                                headers=default_headers)
         if response.status_code == 200:
             channel_data = response.json()
             if channel_data:
@@ -233,6 +235,7 @@ def get_subscriptions_from_api():
         logger.critical(f"Failed to get subscription types\n Server response - {response.text}")
         return None
 
+
 def get_channel_tag_limit(channel_id):
     channel = getChannelById(channel_id)
     if channel is None:
@@ -259,6 +262,7 @@ def get_channel_tag_limit(channel_id):
 
     logger.error(f"No matching subscription type found for channel ID: {channel_id}")
     return None
+
 
 def subscribe_channel(channel_id, subtype_id):
     try:
@@ -337,13 +341,55 @@ async def update_channel_language(channel_id, new_language):
 
 
 async def is_user_admin(telegram_id):
-    api_url = f'{API_URL}/Auth/IsAdmin/{telegram_id}'
-    async with aiohttp.ClientSession(headers=default_headers) as session:
-        async with session.get(api_url, ssl=False) as response:
+    # api_url = f'{API_URL}/Auth/IsAdmin/{telegram_id}'
+    # async with aiohttp.ClientSession(headers=default_headers) as session:
+    #     async with session.get(api_url, ssl=False) as response:
+    #         if response.status == 200:
+    #             return await response.json()  # Assuming the API returns a JSON boolean
+    #         else:
+    #             return False  # Consider appropriate error handling
+    return True
+
+
+async def is_user_support(telegram_id):
+    return True
+
+
+async def close_report(report_id: int, telegram_id: int, status: int):
+    endpoint = f'{API_URL}/Admin/CloseReport/{report_id}/{telegram_id}/{status}'
+    async with aiohttp.ClientSession() as session:
+        async with session.post(endpoint) as response:
+            return response
+
+
+async def get_all_supports(user_id: int):
+    endpoint = f'{API_URL}/Admin/GetAllSupports/{user_id}'
+    async with aiohttp.ClientSession() as session:
+        async with session.get(endpoint) as response:
             if response.status == 200:
-                return await response.json()  # Assuming the API returns a JSON boolean
+                supports = []
+                for support in await response.json():
+                    supports.append(support)
+                return supports
             else:
-                return False  # Consider appropriate error handling
+                return None
+
+
+async def get_user_notifications_settings(telegram_id: int) -> dict | None:
+    endpoint = f'{API_URL}/Notification/GetNotificationSettings/{telegram_id}'
+    async with aiohttp.ClientSession() as session:
+        async with session.get(endpoint, headers=default_headers) as response:
+            if response.status == 200:
+                return await response.json()
+            else:
+                return None
+
+
+async def set_user_notifications_settings(telegram_id: int, settings: dict) -> bool:
+    endpoint = f'{API_URL}/Notification/SetNotificationSettings/{telegram_id}'
+    async with aiohttp.ClientSession() as session:
+        async with session.post(endpoint, json=settings, headers=default_headers) as response:
+            return response.status == 200
 
 
 def updateChannelDetails(channel_id, promo_post_time, promo_post_interval):
@@ -390,6 +436,12 @@ async def get_payment_data(payment_id):
                 return "Payment not found"
             else:
                 return "Error occurred"
+
+
+def create_ad_post(data: dict):
+    json_data = json.dumps(data, indent=4)
+    url = f'{API_URL}/'
+    requests.post(url, json=json_data)
 
 # async def get_user_notifications(telegram_id):
 #     """

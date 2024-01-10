@@ -40,6 +40,7 @@ async def cmd_admin(message: types.Message):
 
     # Check if the user is an admin
     isAdmin = await is_user_admin(user_id)
+    print(isAdmin)
 
     # Define the markup based on admin status
     if isAdmin:
@@ -57,7 +58,7 @@ async def cmd_admin(message: types.Message):
 @dp.message_handler(Command("reports"))
 async def cmd_reports(message: types.Message):
     user_id = message.from_user.id
-    api_url = f'https://localhost:7256/api/Auth/Reports/{user_id}'
+    api_url = f'https://tgsearch.info:1488/api/Auth/Reports/{user_id}'
 
     async with aiohttp.ClientSession() as session:
         async with session.get(api_url, ssl=False) as response:
@@ -84,7 +85,7 @@ async def display_reports(callback_query: types.CallbackQuery, state: FSMContext
     await callback_query.answer()
     data = await state.get_data()
     user_id = callback_query.from_user.id
-    api_url = f'https://localhost:7256/api/Auth/Reports/{user_id}'
+    api_url = f'https://tgsearch.info:1488/api/Auth/Reports/{user_id}'
 
     async with aiohttp.ClientSession() as session:
         async with session.get(api_url, ssl=False) as response:
@@ -404,7 +405,7 @@ async def process_custom_message(message: types.Message, state: FSMContext):
     print(notification_data)
     # Make the request to create a new notification
     async with aiohttp.ClientSession() as session:
-        async with session.post('https://localhost:7256/api/Notification/CreateNotification',
+        async with session.post('https://tgsearch.info:1488/api/Notification/CreateNotification',
                                 json=notification_data, ssl=False) as response:
             if response.status == 200:
 

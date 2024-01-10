@@ -6,11 +6,18 @@ from aiogram import Dispatcher
 from Handlers.channel_menu_handlers import *
 from Handlers.menu_handlers import *
 from Handlers.add_channel_handlers import *
-from Handlers.AdminPanelHandlers import *
+
+from Handlers_new.notifications_settings import *
+from Handlers_new.admin_handlers import *
+from Handlers_new.support_handlers import *
+
+
 from aiogram.utils import executor
 from notification_service import start_notification_service
 from bot import dp, pyro_client
 from socket_service import *
+
+from aiogram_dialog import DialogRegistry
 
 from throthling_middleware import ThrottlingMiddleware
 

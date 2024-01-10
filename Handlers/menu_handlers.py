@@ -91,11 +91,12 @@ async def cmd_start(message: types.Message, state: FSMContext):
         return
 
     markup = InlineKeyboardMarkup(row_width=1)
-    markup.add(InlineKeyboardButton("Add Channel", callback_data="add_channel"),
-               InlineKeyboardButton("Manage Channels", callback_data="manage_channels"),
-               InlineKeyboardButton("Notification Settings", callback_data="manage_channels"))
+    # TODO: translate
+    markup.add(InlineKeyboardButton("Добавить канал", callback_data="add_channel"),
+               InlineKeyboardButton("Управление каналами", callback_data="manage_channels"),
+               InlineKeyboardButton("Настройка уведомлений", callback_data="xxx_notifications_settings"))
 
-    await bot.send_message(message.chat.id, "Menu:", reply_markup=markup)
+    await bot.send_message(message.chat.id, "Меню:", reply_markup=markup)
 
 
 YCASSATOKEN = "381764678:TEST:59527"
@@ -138,9 +139,10 @@ async def back_to_menu_handler(callback_query: types.CallbackQuery):
     await callback_query.answer()
     # Open the main menu
     markup = InlineKeyboardMarkup(row_width=1)
-    markup.add(InlineKeyboardButton("Add Channel", callback_data="add_channel"),
-               InlineKeyboardButton("Manage Channels", callback_data="manage_channels"),
-               InlineKeyboardButton("Notification Settings", callback_data="manage_channels"))
+    # TODO: translate
+    markup.add(InlineKeyboardButton("Добавить канал", callback_data="add_channel"),
+               InlineKeyboardButton("Управление каналами", callback_data="manage_channels"),
+               InlineKeyboardButton("Настройка уведомлений", callback_data="xxx_notifications_settings"))
 
     if callback_query.message.reply_markup:
         # Edit the existing message with the updated inline keyboard
@@ -148,11 +150,11 @@ async def back_to_menu_handler(callback_query: types.CallbackQuery):
             chat_id=callback_query.message.chat.id,
             message_id=callback_query.message.message_id,
             reply_markup=markup,
-            text=f"Main menu:",
+            text=f"Меню:",
         )
     else:
         # Send a new message with the inline keyboard
-        await callback_query.message.answer(text="Main menu:", reply_markup=markup)
+        await callback_query.message.answer(text="Меню:", reply_markup=markup)
 
 
 @dp.callback_query_handler(lambda c: c.data == "add_channel")
@@ -160,9 +162,10 @@ async def add_channel_handler(callback_query: types.CallbackQuery):
     await callback_query.answer()
     # Set the state
     await AddChannelStates.waiting_for_channel_name.set()
-    message = await callback_query.message.answer("Please enter the channel name:",
+    # TODO: translate
+    message = await callback_query.message.answer("Введите ссылку на канал:",
                                                   reply_markup=InlineKeyboardMarkup(row_width=1)
-                                                  .add(InlineKeyboardButton("Cancel",
+                                                  .add(InlineKeyboardButton("Отмена",
                                                                             callback_data="cancel_enter_channel_name")))
     await dp.current_state().update_data(channel_name_message_id=message.message_id)
 

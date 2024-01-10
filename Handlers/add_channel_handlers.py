@@ -31,7 +31,8 @@ async def cancel_add_channel(callback_query: types.CallbackQuery, state: FSMCont
     data = await state.get_data()
     await delete_messages(bot, callback_query.message.chat.id, data.get("message_ids", []))
     await state.finish()
-    await callback_query.answer("Adding channel cancelled.")
+    # TODO: translate
+    await callback_query.answer("Добавление канала отменено.")
     await bot.delete_message(callback_query.message.chat.id, callback_query.message.message_id)
 
 
@@ -65,7 +66,8 @@ async def process_channel_name(message: types.Message, state: FSMContext):
     if match:
         channel_name = "@" + match.group(1)
     else:
-        await message.answer("Error: Invalid channel name format.")
+        # TODO: translate
+        await message.answer("Ошибка, неправильная ссылка на канал.")
         return
 
     # Save the channel name in the context
@@ -77,9 +79,10 @@ async def process_channel_name(message: types.Message, state: FSMContext):
 
     # Create the "Add Bot" button and send the message
     markup = InlineKeyboardMarkup(row_width=1)
-    markup.add(InlineKeyboardButton("Check", callback_data="add_bot"))
-    markup.add(InlineKeyboardButton("Cancel", callback_data="cancel_add_channel"))  # Add cancel button
-    await message.answer("To add a channel for monitoring, you need to add the bot to the channel.",
+    # TODO: translate
+    markup.add(InlineKeyboardButton("Проверить", callback_data="add_bot"))
+    markup.add(InlineKeyboardButton("Отменить", callback_data="cancel_add_channel"))  # Add cancel button
+    await message.answer("Чтобы добавить канал на сервис, вам нужно пригласить бота в канал.",
                          reply_markup=markup)
 
     await update_message_ids(state, message.message_id)
@@ -115,11 +118,12 @@ async def process_add_bot_core(callback_query, state):
     channel_id = data.get("channel_id")
     user = callback_query.from_user
 
+    # TODO: translate
     if not await check_bot_in_channel(channel_name):
-        return "Error: Bot was not added to the channel."
+        return "Ошибка: Бот не был добавлен в канал."
 
     if not await is_user_admin(channel_name, user.id):
-        return "Error: You are not an administrator of the specified channel."
+        return "Ошибка, вы не администратор данного канала."
 
         # Retrieve the channel ID using bot.get_chat
 
@@ -127,17 +131,17 @@ async def process_add_bot_core(callback_query, state):
 
     await state.update_data(channel_name=channel_name, user_id=user.id, channel_id=channel_id,
                             channel_name_real=channel_name_real)
-    sent_message = await callback_query.message.answer(
-        "Please enter the channel description:",
+    sent_message = await callback_query.message.edit_text(
+        "Введите описание для вашего канала:",
         reply_markup=InlineKeyboardMarkup(row_width=1)
-        .add(InlineKeyboardButton("Cancel", callback_data="cancel_enter_description"))
+        .add(InlineKeyboardButton("Отмена", callback_data="cancel_enter_description"))
     )
 
     await update_message_ids(state, callback_query.message.message_id)
     await update_message_ids(state, sent_message.message_id)
     await AddChannelStates.waiting_for_channel_description.set()
 
-    return "Success! Bot added to the channel."
+    return "Бот успешно добавлен в канал!."
 
 
 @dp.callback_query_handler(state=AddChannelStates.waiting_for_check, text="add_bot")
@@ -153,13 +157,14 @@ async def process_channel_description_core(message, state):
     user_id = data.get("user_id")
 
     if channel_name is None:
-        await message.answer("Error: Failed to get channel information.")
+        # TODO: translate
+        await message.answer("Ошибка при получении информации о канале.")
         await state.finish()
         return
 
     channel_description = message.text
     if len(channel_description) > 130:
-        error_msg = await message.answer("Error: Description must be 130 symbols or shorter. Please enter it again.")
+        error_msg = await message.answer("Ошибка: Длинна описания должна быть меньше 130 симыволов.")
         await update_message_ids(state, error_msg.message_id)
         return  # Return early so user can re-enter
 
@@ -186,16 +191,18 @@ async def process_channel_description(message: types.Message, state: FSMContext)
         await state.update_data(channel_id=channel_id, user_id=message.from_user.id,
                                 channel_name_real=chat.full_name, channel_url=channel_url)
     except Exception as e:
-        await message.answer(f"Error: Failed to retrieve the channel ID or URL: {e}")
+        # TODO: translate
+        await message.answer(f"Ошибка при получении информаци о канале: {e}")
         await state.finish()
         return
 
     markup = InlineKeyboardMarkup(row_width=1).add(
-        InlineKeyboardButton("Ru", callback_data="language_ru"),
-        InlineKeyboardButton("Eu", callback_data="language_en"),
-        InlineKeyboardButton("Ua", callback_data="language_uk")
+        InlineKeyboardButton("RU", callback_data="language_ru"),
+        InlineKeyboardButton("EU", callback_data="language_en"),
+        InlineKeyboardButton("UA", callback_data="language_uk")
     )
-    sent_message = await message.answer("Choose channel language", reply_markup=markup)
+    # TODO: translate
+    sent_message = await message.answer("Выберите регион", reply_markup=markup)
     await update_message_ids(state, message.message_id)
     await update_message_ids(state, sent_message.message_id)
     await AddChannelStates.waiting_for_language_selection.set()
@@ -207,19 +214,7 @@ async def process_language_selection(callback_query: types.CallbackQuery, state:
     chosen_language = callback_query.data.split("_")[1]
     await state.update_data(language=chosen_language)
 
-    markup = InlineKeyboardMarkup(row_width=1).add(
-        InlineKeyboardButton("🇷🇺", callback_data="flag_ru"),
-        InlineKeyboardButton("🇬🇧", callback_data="flag_en"),
-        InlineKeyboardButton("🇺🇦", callback_data="flag_uk")
-    )
-    await callback_query.message.answer("Выберете флаг вашего канала", reply_markup=markup)
-    await AddChannelStates.waiting_for_flag_selection.set()
-
-
-@dp.callback_query_handler(state=AddChannelStates.waiting_for_flag_selection)
-async def process_flag_selection(callback_query: types.CallbackQuery, state: FSMContext):
-    await callback_query.answer()
-    chosen_flag = callback_query.data.split("_")[1]
+    chosen_flag = "undefined"
     data = await state.get_data()
 
     chosen_language = data.get("language")
@@ -236,7 +231,8 @@ async def process_flag_selection(callback_query: types.CallbackQuery, state: FSM
     # Save all details now
     db_user_id = await get_user_id_from_database(user_id)
     if db_user_id is None:
-        await callback_query.message.answer("Error: Failed to get user information.")
+        # TODO: translate
+        await callback_query.message.answer("Ошибка при получении информации о пользователе.")
         await state.finish()
         return
 
@@ -246,16 +242,19 @@ async def process_flag_selection(callback_query: types.CallbackQuery, state: FSM
     )
 
     if channel_id == 0:
-        await callback_query.message.answer("Failed to save channel information.")
+        # TODO: translate
+        await callback_query.message.answer("Ошибка при сохранении информации о канале.")
         await state.finish()
         return
 
     if not await save_channel_access(db_user_id, channel_id):
-        await callback_query.message.answer("Failed to save channel access.")
+        # TODO: translate
+        await callback_query.message.answer("Ошибка при сохранении информации о доступе к каналу.")
         await state.finish()
         return
 
-    sent_message = await callback_query.message.answer("Channel information saved successfully.")
+    # TODO: translate
+    sent_message = await callback_query.message.answer("Информация о канале успешно добавлена.")
     await update_message_ids(state, callback_query.message.message_id)
     await update_message_ids(state, sent_message.message_id)
     data = await state.get_data()
