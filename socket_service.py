@@ -4,11 +4,13 @@ import datetime
 from collections import defaultdict
 from datetime import datetime, timedelta
 
+import pyrogram
 import websockets
 from pyrogram.raw import functions
 from pyrogram.raw.base import StatsGraph
 from pyrogram.raw.functions.contacts import ResolveUsername
-from pyrogram.raw.types import InputChannel
+from pyrogram.raw.functions.stats import LoadAsyncGraph
+from pyrogram.raw.types import InputChannel, StatsGraphAsync
 from Handlers.menu_handlers import bytes_to_base64
 from api import *
 from bot import bot
@@ -29,7 +31,6 @@ async def get_access_hash(client, channel_id):
 
         # Resolve the username to get access_hash
         result = await client.invoke(ResolveUsername(username=channel_username))
-        print(result)
 
         # Extract channel_id and access_hash from the response
         if result.peer and hasattr(result.peer, 'channel_id'):
@@ -45,6 +46,41 @@ async def get_access_hash(client, channel_id):
         print(f"An error occurred: {e}")
         return None, None
 
+def timestamp_to_date(timestamp):
+    return datetime.fromtimestamp(timestamp / 1000).strftime('%Y-%m-%d')
+
+def process_graph_data(graph):
+    dates = [timestamp_to_date(x) for x in graph['columns'][0][1:]]  # Convert timestamps
+    series_data = {}
+
+    for series_index, series_name in enumerate(graph['names'], start=1):
+        series_values = graph['columns'][series_index][1:]
+        series_data[graph['names'][series_name]] = dict(zip(dates, series_values))
+
+    return series_data
+
+
+async def fetch_async_graph_data(client, token):
+    try:
+        # Invoke LoadAsyncGraph with the provided token
+        result = await client.invoke(LoadAsyncGraph(token=token, x=0))  # Adjust 'x' as needed
+
+        # Check if the result is a StatsGraph object
+        if isinstance(result, pyrogram.raw.types.stats_graph.StatsGraph):
+            # If result contains JSON data, parse it
+            if hasattr(result, 'json') and result.json:
+                graph_data = json.loads(result.json.data)
+                return graph_data
+            else:
+                print("StatsGraph object received but does not contain valid JSON data.")
+                return None
+        else:
+            print(f"Unexpected response type: {type(result)}")
+            return None
+    except Exception as e:
+        print(f"Error fetching async graph data: {e}")
+        return None
+
 
 async def get_broadcast_stats(channel_username):
     try:
@@ -57,25 +93,55 @@ async def get_broadcast_stats(channel_username):
         input_channel = InputChannel(channel_id=channel_id, access_hash=access_hash)
 
         # Fetch broadcast stats using Pyrogram's raw API
-        result = await pyro_client.invoke(functions.stats.GetBroadcastStats(channel=input_channel))
+        broadcast_stats = await pyro_client.invoke(functions.stats.GetBroadcastStats(channel=input_channel))
 
-        # Process and extract the StatsGraph data
-        if result.graphs is not None:
-            graphs = {}
-            for graph_name, graph in result.graphs.items():
-                if isinstance(graph, StatsGraph):
-                    # Convert the StatsGraph data to JSON
-                    graphs[graph_name] = json.loads(graph.json_data)
-                else:
-                    graphs[graph_name] = "Unsupported graph type"
-            print(graphs)
-            return graphs
+        # Process the BroadcastStats object
+        processed_stats = {
+            'period': {
+                'min_date': timestamp_to_date(broadcast_stats.period.min_date),
+                'max_date': timestamp_to_date(broadcast_stats.period.max_date)
+            },
+            'followers': {
+                'current': broadcast_stats.followers.current,
+                'previous': broadcast_stats.followers.previous
+            },
+            'views_per_post': {
+                'current': broadcast_stats.views_per_post.current,
+                'previous': broadcast_stats.views_per_post.previous
+            },
+            'shares_per_post': {
+                'current': broadcast_stats.shares_per_post.current,
+                'previous': broadcast_stats.shares_per_post.previous
+            },
+            'enabled_notifications': {
+                'part': broadcast_stats.enabled_notifications.part,
+                'total': broadcast_stats.enabled_notifications.total
+            }
+        }
 
-        return None
+        # Process StatsGraph and StatsGraphAsync fields
+        graph_fields = ['growth_graph', 'followers_graph', 'mute_graph', 'top_hours_graph',
+                        'interactions_graph', 'iv_interactions_graph', 'views_by_source_graph',
+                        'new_followers_by_source_graph', 'languages_graph']
+
+        # Process each graph field
+        for field in graph_fields:
+            graph = getattr(broadcast_stats, field, None)
+            if isinstance(graph, StatsGraph):
+                graph_data = json.loads(graph.json.data)
+                processed_stats[field] = process_graph_data(graph_data)
+            elif isinstance(graph, StatsGraphAsync):
+                async_graph_data = await fetch_async_graph_data(pyro_client, graph.token)
+                if async_graph_data:
+                    processed_stats[field] = process_graph_data(async_graph_data)
+
+        print(processed_stats)
+        return processed_stats
 
     except Exception as e:
         print(f"An error occurred: {e}")
         return None
+
 
 
 async def get_messages_from_past_days(chat_id, number_of_days, start_date=None, max_retries=2):
@@ -368,7 +434,7 @@ async def listen(websocket, running):
                     "getProfilePictureAndUsername": get_profile_picture_and_username,
                     "get_subscribers_count_batch": get_subscribers_count_batch,
                     "getMessagesFromPastYear": get_monthly_views_by_channel,
-                    "getBroadcastStats" : get_broadcast_stats
+                    "getBroadcastStats": get_broadcast_stats
                 }
 
                 if function_name in function_map:
