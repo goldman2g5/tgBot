@@ -17,8 +17,6 @@ from notification_service import start_notification_service
 from bot import dp, pyro_client
 from socket_service import *
 
-from aiogram_dialog import DialogRegistry
-
 from throthling_middleware import ThrottlingMiddleware
 
 

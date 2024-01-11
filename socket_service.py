@@ -1,28 +1,87 @@
-import json
-import traceback
-
-import websockets
 import asyncio
+import base64
 import datetime
 from collections import defaultdict
 from datetime import datetime, timedelta
 
-from Handlers.menu_handlers import bytes_to_base64
-from bot import bot
 import websockets
-
+from pyrogram.raw import functions
+from pyrogram.raw.base import StatsGraph
+from pyrogram.raw.functions.contacts import ResolveUsername
+from pyrogram.raw.types import InputChannel
+from Handlers.menu_handlers import bytes_to_base64
 from api import *
+from bot import bot
+from bot import bot_token
 from bot import pyro_client
-from bot import Bot, bot_token
-import base64
 
 queue = asyncio.Queue()
 
 
+async def get_access_hash(client, channel_id):
+    try:
+        # Get channel information by ID
+        channel = await client.get_chat(channel_id)
+        channel_username = channel.username
+
+        if channel_username is None:
+            raise ValueError("Channel username not found.")
+
+        # Resolve the username to get access_hash
+        result = await client.invoke(ResolveUsername(username=channel_username))
+        print(result)
+
+        # Extract channel_id and access_hash from the response
+        if result.peer and hasattr(result.peer, 'channel_id'):
+            channel_id = result.peer.channel_id
+            # Find the matching channel in the chats list to get the access_hash
+            for chat in result.chats:
+                if chat.id == channel_id:
+                    return chat.id, chat.access_hash
+
+        return None, None
+
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        return None, None
+
+
+async def get_broadcast_stats(channel_username):
+    try:
+        # Get channel_id and access_hash
+        channel_id, access_hash = await get_access_hash(pyro_client, channel_username)
+        if channel_id is None or access_hash is None:
+            raise ValueError("Unable to resolve channel username to ID and access hash")
+
+        # Create InputChannel
+        input_channel = InputChannel(channel_id=channel_id, access_hash=access_hash)
+
+        # Fetch broadcast stats using Pyrogram's raw API
+        result = await pyro_client.invoke(functions.stats.GetBroadcastStats(channel=input_channel))
+
+        # Process and extract the StatsGraph data
+        if result.graphs is not None:
+            graphs = {}
+            for graph_name, graph in result.graphs.items():
+                if isinstance(graph, StatsGraph):
+                    # Convert the StatsGraph data to JSON
+                    graphs[graph_name] = json.loads(graph.json_data)
+                else:
+                    graphs[graph_name] = "Unsupported graph type"
+            print(graphs)
+            return graphs
+
+        return None
+
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        return None
+
+
 async def get_messages_from_past_days(chat_id, number_of_days, start_date=None, max_retries=2):
-    if start_date is None:
-        # Set start_date to be 3 days before now for testing
-        start_date = (datetime.utcnow() - timedelta(days=3)).replace(hour=0, minute=0, second=0, microsecond=0)
+    # if start_date is None:
+    #     # Set start_date to be 3 days before now for testing
+    #     start_date = (datetime.utcnow() - timedelta(days=3)).replace(hour=0, minute=0, second=0, microsecond=0)
 
     logging.info(f"Starting to fetch messages from past {number_of_days} days for channel {chat_id}.")
     days_ago = (datetime.utcnow() - timedelta(days=number_of_days)).replace(hour=0, minute=0, second=0, microsecond=0)
@@ -88,6 +147,102 @@ async def get_daily_views_by_channel(channel_name, number_of_days, offset_date=N
 
         # Serialize the list of dictionaries to a JSON formatted string
         return json.dumps(daily_stats)
+
+    except Exception as e:
+        logging.error(f"An error occurred: {e}")
+        # Return a JSON formatted empty list
+        return json.dumps([])
+
+
+async def get_messages_from_past_year(chat_id, max_retries=2, delay_between_batches=5):
+    logging.info(f"Starting to fetch messages from past year for channel {chat_id}.")
+    end_date = datetime.utcnow()
+    start_date = end_date - timedelta(days=365)
+    all_messages = []
+    first_batch = True
+    batch_count = 0
+
+    while start_date < end_date:
+        batch_count += 1
+        logging.info(f"Batch {batch_count}: Processing batch starting from {start_date}.")
+
+        # Calculate the end of the month for the current start_date
+        if first_batch:
+            batch_end_date = end_date
+            first_batch = False
+        elif start_date.month == 12:
+            batch_end_date = datetime(start_date.year + 1, 1, 1)
+        else:
+            batch_end_date = datetime(start_date.year, start_date.month + 1, 1)
+        batch_end_date = min(batch_end_date, end_date)
+
+        logging.info(f"Batch {batch_count}: Fetching messages from {start_date} to {batch_end_date}.")
+
+        attempt = 0
+        while attempt < max_retries:
+            try:
+                yield_object = pyro_client.get_chat_history(chat_id, offset_date=start_date, limit=None)
+                message_count = 0
+
+                async for message in yield_object:
+                    if message.date >= batch_end_date:
+                        break
+                    all_messages.append(message)
+                    message_count += 1
+
+                logging.info(
+                    f"Batch {batch_count}: Fetched {message_count} messages. Total messages so far: {len(all_messages)}")
+
+                start_date = batch_end_date
+                break  # Exit the retry loop on success
+
+            except asyncio.TimeoutError:
+                attempt += 1
+                wait_time = 2 ** attempt  # Exponential backoff
+                logging.warning(
+                    f"Batch {batch_count}: Timeout occurred. Retrying in {wait_time} seconds. Attempt {attempt}/{max_retries}.")
+                await asyncio.sleep(wait_time)
+            except Exception as e:
+                logging.error(f"Batch {batch_count}: Error while fetching or processing messages: {e}")
+                break  # Exit on other exceptions
+
+        logging.info(
+            f"Batch {batch_count}: Completed fetching. Waiting {delay_between_batches} seconds before next batch.")
+        await asyncio.sleep(delay_between_batches)
+
+    logging.info(f"Finished fetching messages for channel {chat_id}. Total messages fetched: {len(all_messages)}")
+    return all_messages
+
+
+async def calculate_monthly_views(messages):
+    monthly_views = defaultdict(lambda: {"views": 0, "last_message_id": None})
+    for message in messages:
+        if hasattr(message, 'views') and message.views and message.date:
+            # Format the month as 'YYYY-MM'
+            message_month = message.date.strftime('%Y-%m')
+            view_count = message.views
+            monthly_views[message_month]["views"] += view_count
+            monthly_views[message_month]["last_message_id"] = message.id
+    return monthly_views
+
+
+async def get_monthly_views_by_channel(chat_id):
+    try:
+        chat = await pyro_client.get_chat(chat_id)
+        chat_id = chat.id
+
+        # Fetch messages from the past year
+        messages = await get_messages_from_past_year(chat_id)
+        views_by_month = await calculate_monthly_views(messages)
+
+        # Creating a list of dictionaries for each month
+        monthly_stats = [
+            {"month": month, "views": data["views"], "lastMessageId": data["last_message_id"]}
+            for month, data in views_by_month.items()
+        ]
+
+        # Serialize the list of dictionaries to a JSON formatted string
+        return json.dumps(monthly_stats)
 
     except Exception as e:
         logging.error(f"An error occurred: {e}")
@@ -211,7 +366,9 @@ async def listen(websocket, running):
                     "getDailyViewsByChannel": get_daily_views_by_channel,
                     "getSubscribersCount": get_subscribers_count,
                     "getProfilePictureAndUsername": get_profile_picture_and_username,
-                    "get_subscribers_count_batch": get_subscribers_count_batch
+                    "get_subscribers_count_batch": get_subscribers_count_batch,
+                    "getMessagesFromPastYear": get_monthly_views_by_channel,
+                    "getBroadcastStats" : get_broadcast_stats
                 }
 
                 if function_name in function_map:
@@ -283,7 +440,6 @@ async def connectToHub():
                 }
                 await websocket.send(toSignalRMessage(completion_message))
                 queue.task_done()
-
 
     connection_closed_printed = False
     workers = []

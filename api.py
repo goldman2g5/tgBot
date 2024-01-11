@@ -1,11 +1,11 @@
 import json
 import logging
-from typing import List
+from typing import List, Optional
 import aiohttp
 import requests
 
-# API_URL = "http://localhost:7256/api"
-API_URL = "https://tgsearch.info:1488/api"
+API_URL = "http://localhost:7256/api"
+#API_URL = "https://tgsearch.info:1488/api"
 API_KEY = "7bdf1ca44d84484c9864c06c0aedc1beb740909b02e4404ebafd381db897e1a5387567f8b42f47c7b5192eac60547460e0003c11fd804d1a966a30eacd939a3acaa9a352797f436aad6cd14f27517554"
 Verify_value = False
 
@@ -375,7 +375,7 @@ async def get_all_supports(user_id: int):
                 return None
 
 
-async def get_user_notifications_settings(telegram_id: int) -> dict | None:
+async def get_user_notifications_settings(telegram_id: int) -> Optional[dict]:
     endpoint = f'{API_URL}/Notification/GetNotificationSettings/{telegram_id}'
     async with aiohttp.ClientSession() as session:
         async with session.get(endpoint, headers=default_headers) as response:
