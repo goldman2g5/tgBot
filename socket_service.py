@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 
 import pyrogram
 import websockets
+from dateutil.relativedelta import relativedelta
 from pyrogram.raw import functions
 from pyrogram.raw.base import StatsGraph
 from pyrogram.raw.functions.contacts import ResolveUsername
@@ -46,8 +47,10 @@ async def get_access_hash(client, channel_id):
         print(f"An error occurred: {e}")
         return None, None
 
+
 def timestamp_to_date(timestamp):
     return datetime.fromtimestamp(timestamp / 1000).strftime('%Y-%m-%d')
+
 
 def process_graph_data(graph):
     dates = [timestamp_to_date(x) for x in graph['columns'][0][1:]]  # Convert timestamps
@@ -143,7 +146,6 @@ async def get_broadcast_stats(channel_username):
         return None
 
 
-
 async def get_messages_from_past_days(chat_id, number_of_days, start_date=None, max_retries=2):
     # if start_date is None:
     #     # Set start_date to be 3 days before now for testing
@@ -220,63 +222,75 @@ async def get_daily_views_by_channel(channel_name, number_of_days, offset_date=N
         return json.dumps([])
 
 
-async def get_messages_from_past_year(chat_id, max_retries=2, delay_between_batches=5):
-    logging.info(f"Starting to fetch messages from past year for channel {chat_id}.")
-    end_date = datetime.utcnow()
-    start_date = end_date - timedelta(days=365)
+async def get_messages_from_past_months(chat_id, months=1, batch_size=500, max_retries=2, delay_between_batches=5):
+    months = 12
+
+    logging.info(f"[Initialization] Fetching messages from the past {months} months for channel {chat_id}.")
+
+    # Current date is the most recent date (upper bound)
+    current_date = datetime.utcnow()
+
+    # Calculate the start date to include the entire current month
+    # Replace hour, minute, second, and microsecond to include messages from the very beginning of the day
+    start_date = (current_date - relativedelta(months=months-1)).replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+
+    logging.info(f"[Date Setup] Current date: {current_date}, Start date set to: {start_date}")
+
     all_messages = []
-    first_batch = True
     batch_count = 0
 
-    while start_date < end_date:
+    # The 'fetch_until' date starts from the current date and moves backwards
+    fetch_until = current_date
+
+    while fetch_until > start_date:
         batch_count += 1
-        logging.info(f"Batch {batch_count}: Processing batch starting from {start_date}.")
-
-        # Calculate the end of the month for the current start_date
-        if first_batch:
-            batch_end_date = end_date
-            first_batch = False
-        elif start_date.month == 12:
-            batch_end_date = datetime(start_date.year + 1, 1, 1)
-        else:
-            batch_end_date = datetime(start_date.year, start_date.month + 1, 1)
-        batch_end_date = min(batch_end_date, end_date)
-
-        logging.info(f"Batch {batch_count}: Fetching messages from {start_date} to {batch_end_date}.")
+        logging.info(f"[Batch {batch_count} Start] Fetching messages until: {fetch_until}")
 
         attempt = 0
         while attempt < max_retries:
             try:
-                yield_object = pyro_client.get_chat_history(chat_id, offset_date=start_date, limit=None)
+                logging.info(f"[Batch {batch_count} Attempt {attempt + 1}] Fetching messages...")
+                yield_object = pyro_client.get_chat_history(chat_id, offset_date=fetch_until, limit=batch_size)
+
                 message_count = 0
+                earliest_message_date = None
 
                 async for message in yield_object:
-                    if message.date >= batch_end_date:
-                        break
+                    if message.date < start_date:
+                        continue  # Skip messages older than the start date
+
                     all_messages.append(message)
                     message_count += 1
 
-                logging.info(
-                    f"Batch {batch_count}: Fetched {message_count} messages. Total messages so far: {len(all_messages)}")
+                    # Keep track of the earliest (oldest) message date in this batch
+                    if earliest_message_date is None or message.date < earliest_message_date:
+                        earliest_message_date = message.date
 
-                start_date = batch_end_date
-                break  # Exit the retry loop on success
+                logging.info(f"[Batch {batch_count} Completion] Fetched {message_count} messages. Total messages so far: {len(all_messages)}")
 
-            except asyncio.TimeoutError:
+                # Update the 'fetch_until' date to the earliest message date from this batch
+                if earliest_message_date:
+                    fetch_until = earliest_message_date - timedelta(seconds=1)
+                else:
+                    # No messages were fetched in this batch; move the fetch_until date back
+                    fetch_until -= relativedelta(days=1)
+
+                break  # Exit retry loop after successful attempt
+
+            except asyncio.TimeoutError as timeout_error:
                 attempt += 1
-                wait_time = 2 ** attempt  # Exponential backoff
-                logging.warning(
-                    f"Batch {batch_count}: Timeout occurred. Retrying in {wait_time} seconds. Attempt {attempt}/{max_retries}.")
+                wait_time = 2 ** attempt
+                logging.warning(f"[Timeout Error] Batch {batch_count}, attempt {attempt}. Error: {timeout_error}. Retrying in {wait_time} seconds.")
                 await asyncio.sleep(wait_time)
+
             except Exception as e:
-                logging.error(f"Batch {batch_count}: Error while fetching or processing messages: {e}")
+                logging.error(f"[Error] Batch {batch_count}, attempt {attempt}. Error: {e}. Exiting batch.")
                 break  # Exit on other exceptions
 
-        logging.info(
-            f"Batch {batch_count}: Completed fetching. Waiting {delay_between_batches} seconds before next batch.")
+        logging.info(f"[Batch {batch_count} End] Moving to next batch after {delay_between_batches} seconds.")
         await asyncio.sleep(delay_between_batches)
 
-    logging.info(f"Finished fetching messages for channel {chat_id}. Total messages fetched: {len(all_messages)}")
+    logging.info(f"[Completion] Finished fetching messages for channel {chat_id}. Total messages fetched: {len(all_messages)}")
     return all_messages
 
 
@@ -292,13 +306,13 @@ async def calculate_monthly_views(messages):
     return monthly_views
 
 
-async def get_monthly_views_by_channel(chat_id):
+async def get_monthly_views_by_channel(chat_id, months):
     try:
         chat = await pyro_client.get_chat(chat_id)
         chat_id = chat.id
 
         # Fetch messages from the past year
-        messages = await get_messages_from_past_year(chat_id)
+        messages = await get_messages_from_past_months(chat_id, months=months)
         views_by_month = await calculate_monthly_views(messages)
 
         # Creating a list of dictionaries for each month
