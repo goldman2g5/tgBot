@@ -329,8 +329,8 @@ async def update_channel_language(channel_id, new_language):
     # Prepare the payload
     payload = {"language": new_language}
 
-    async with aiohttp.ClientSession() as session:
-        async with session.put(endpoint, json=payload, headers=default_headers) as response:
+    async with aiohttp.ClientSession(headers=default_headers) as session:
+        async with session.put(endpoint, json=payload) as response:
             if response.status == 204:
                 print("Successfully updated the language!")
             elif response.status == 404:
@@ -357,14 +357,14 @@ async def is_user_support(telegram_id):
 
 async def close_report(report_id: int, telegram_id: int, status: int):
     endpoint = f'{API_URL}/Admin/CloseReport/{report_id}/{telegram_id}/{status}'
-    async with aiohttp.ClientSession() as session:
+    async with aiohttp.ClientSession(headers=default_headers) as session:
         async with session.post(endpoint) as response:
             return response
 
 
 async def get_all_supports(user_id: int):
     endpoint = f'{API_URL}/Admin/GetAllSupports/{user_id}'
-    async with aiohttp.ClientSession() as session:
+    async with aiohttp.ClientSession(headers=default_headers) as session:
         async with session.get(endpoint) as response:
             if response.status == 200:
                 supports = []
@@ -377,8 +377,8 @@ async def get_all_supports(user_id: int):
 
 async def get_user_notifications_settings(telegram_id: int) -> Optional[dict]:
     endpoint = f'{API_URL}/Notification/GetNotificationSettings/{telegram_id}'
-    async with aiohttp.ClientSession() as session:
-        async with session.get(endpoint, headers=default_headers) as response:
+    async with aiohttp.ClientSession(headers=default_headers) as session:
+        async with session.get(endpoint) as response:
             if response.status == 200:
                 return await response.json()
             else:
@@ -441,7 +441,7 @@ async def get_payment_data(payment_id):
 def create_ad_post(data: dict):
     json_data = json.dumps(data, indent=4)
     url = f'{API_URL}/'
-    requests.post(url, json=json_data)
+    requests.post(url, json=json_data, headers=default_headers)
 
 # async def get_user_notifications(telegram_id):
 #     """

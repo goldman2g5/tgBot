@@ -1,6 +1,7 @@
 import asyncio
 import base64
 import datetime
+import time
 from collections import defaultdict
 from datetime import datetime, timedelta
 
@@ -223,8 +224,6 @@ async def get_daily_views_by_channel(channel_name, number_of_days, offset_date=N
 
 
 async def get_messages_from_past_months(chat_id, months=1, batch_size=500, max_retries=2, delay_between_batches=5):
-    months = 12
-
     logging.info(f"[Initialization] Fetching messages from the past {months} months for channel {chat_id}.")
 
     # Current date is the most recent date (upper bound)
@@ -306,9 +305,9 @@ async def calculate_monthly_views(messages):
     return monthly_views
 
 
-async def get_monthly_views_by_channel(chat_id, months):
+async def get_monthly_views_by_channel(channel_id, months):
     try:
-        chat = await pyro_client.get_chat(chat_id)
+        chat = await pyro_client.get_chat(channel_id)
         chat_id = chat.id
 
         # Fetch messages from the past year
@@ -317,7 +316,7 @@ async def get_monthly_views_by_channel(chat_id, months):
 
         # Creating a list of dictionaries for each month
         monthly_stats = [
-            {"month": month, "views": data["views"], "lastMessageId": data["last_message_id"]}
+            {"date": month, "views": data["views"], "lastMessageId": data["last_message_id"]}
             for month, data in views_by_month.items()
         ]
 
@@ -447,7 +446,7 @@ async def listen(websocket, running):
                     "getSubscribersCount": get_subscribers_count,
                     "getProfilePictureAndUsername": get_profile_picture_and_username,
                     "get_subscribers_count_batch": get_subscribers_count_batch,
-                    "getMessagesFromPastYear": get_monthly_views_by_channel,
+                    "getMonthlyViews": get_monthly_views_by_channel,
                     "getBroadcastStats": get_broadcast_stats
                 }
 
@@ -485,40 +484,40 @@ async def connectToHub():
                 # Prepare the result message
                 result_message = {"invocationId": invocation_id, "data": result}
 
-            except TypeError as e:
-                result_message = {"invocationId": invocation_id, "error": f"Invalid parameters for function: {str(e)}"}
             except Exception as e:
+                # Log the error and send an error response instead of breaking the loop
+                print(f"Error during task execution: {e}")
                 result_message = {"invocationId": invocation_id, "error": f"Error in function execution: {str(e)}"}
 
             finally:
-                # Send the result back
-                start_message = {
-                    "type": 1,
-                    "invocationId": "invocation_id",
-                    "target": "ReceiveStream",
-                    "arguments": [
-                        'Bebra'
-                    ],
-                    "streamIds": [
-                        "stream_id"
-                    ]
-                }
-                await websocket.send(toSignalRMessage(start_message))
-                print(result_message)
-                json_result = json.dumps(result_message)
+                # Ensure sending the response even in case of an error
+                try:
+                    start_message = {
+                        "type": 1,
+                        "invocationId": "invocation_id",
+                        "target": "ReceiveStream",
+                        "arguments": ['Bebra'],
+                        "streamIds": ["stream_id"]
+                    }
+                    await websocket.send(toSignalRMessage(start_message))
+                    print(result_message)
+                    json_result = json.dumps(result_message)
 
-                message = {
-                    "type": 2,
-                    "invocationId": "stream_id",
-                    "item": f'{json_result}'
-                }
-                await websocket.send(toSignalRMessage(message))
+                    message = {
+                        "type": 2,
+                        "invocationId": "stream_id",
+                        "item": f'{json_result}'
+                    }
+                    await websocket.send(toSignalRMessage(message))
 
-                completion_message = {
-                    "type": 3,
-                    "invocationId": "stream_id"
-                }
-                await websocket.send(toSignalRMessage(completion_message))
+                    completion_message = {
+                        "type": 3,
+                        "invocationId": "stream_id"
+                    }
+                    await websocket.send(toSignalRMessage(completion_message))
+                except websockets.exceptions.ConnectionClosedError as e:
+                    print(f"WebSocket connection error: {e}")
+
                 queue.task_done()
 
     connection_closed_printed = False
