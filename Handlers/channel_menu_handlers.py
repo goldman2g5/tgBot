@@ -1,22 +1,12 @@
-import asyncio
-import datetime
-import json
-import logging
-from collections import defaultdict
-
-import aiogram.types
-import aiohttp
-import requests
 from aiogram import types
 from aiogram.dispatcher import FSMContext
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ContentType
-from api import *
-from bot import dp, bot
-from bot import dp, bot
-from misc import open_menu, create_notifications_menu
-from datetime import datetime, timedelta
 from aiogram.dispatcher.filters.state import StatesGroup, State
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ContentType
+
+from bot import dp
+from misc import create_notifications_menu
 from socket_service import *
+
 
 @dp.callback_query_handler(lambda c: c.data.startswith("channel_"))
 async def channel_menu_handler(callback_query: types.CallbackQuery):
@@ -27,11 +17,14 @@ async def channel_menu_handler(callback_query: types.CallbackQuery):
     # Create inline buttons for channel menu
     markup = InlineKeyboardMarkup(row_width=1)
     markup.add(
-        InlineKeyboardButton("Subscription", callback_data=f"subscription_{channel_id}_{channel_name}"),
-        InlineKeyboardButton("Notifications", callback_data=f"notifications_{channel_id}_{channel_name}"),
-        InlineKeyboardButton("Bump", callback_data=f"bump_{channel_id}"),
-        InlineKeyboardButton("Options", callback_data=f"customization_{channel_id}_{channel_name}"),
-        InlineKeyboardButton("Back to Menu", callback_data="manage_channels")
+        InlineKeyboardButton("Бамп", callback_data=f"bump_{channel_id}"),
+        InlineKeyboardButton("Подписки", callback_data=f"subscription_{channel_id}_{channel_name}"),
+        # TODO: notifications api
+        InlineKeyboardButton("Уведомления", callback_data=f"notifications_{channel_id}_{channel_name}"),
+        InlineKeyboardButton("Автопост", callback_data=f"autopost_{channel_id}_{channel_name}"),
+        InlineKeyboardButton("Настройки", callback_data=f"customization_{channel_id}_{channel_name}"),
+        InlineKeyboardButton("Создать пост", callback_data=f"create_post_{channel_id}_{channel_name}"),
+        InlineKeyboardButton("Назад", callback_data="manage_channels")
     )
 
     if callback_query.message.reply_markup:
@@ -40,7 +33,7 @@ async def channel_menu_handler(callback_query: types.CallbackQuery):
             chat_id=callback_query.message.chat.id,
             message_id=callback_query.message.message_id,
             reply_markup=markup,
-            text=f"{channel_name} Channel menu:",
+            text=f"@{channel_name} личный кабинет:",
         )
     else:
         # Send a new message with the inline keyboard
@@ -63,11 +56,11 @@ async def customization_handler(callback_query: types.CallbackQuery, state: FSMC
     # Create inline buttons for customization options
     markup = InlineKeyboardMarkup(row_width=1)
     markup.add(
-        InlineKeyboardButton("Tags", callback_data=f"tags_{channel_id}_{channel_name}"),
-        InlineKeyboardButton("Additional Promotion", callback_data=f"promotion_{channel_id}_{channel_name}"),
-        InlineKeyboardButton("Description", callback_data=f"customization_description_{channel_id}"),
-        InlineKeyboardButton("Language Settings", callback_data=f"lang_settings_{channel_id}_{channel_name}"),
-        InlineKeyboardButton("Back to Menu", callback_data=f"channel_{channel_id}_{channel_name}")
+        InlineKeyboardButton("Теги", callback_data=f"tags_{channel_id}_{channel_name}"),
+        # InlineKeyboardButton("Additional Promotion", callback_data=f"promotion_{channel_id}_{channel_name}"),
+        InlineKeyboardButton("Описание", callback_data=f"customization_description_{channel_id}"),
+        InlineKeyboardButton("Регион", callback_data=f"edit_language_{channel_id}_{channel_name}"),
+        InlineKeyboardButton("Назад", callback_data=f"channel_{channel_id}_{channel_name}")
     )
 
     # Edit a message with the customization options
@@ -86,7 +79,7 @@ async def description_handler(callback_query: types.CallbackQuery, state: FSMCon
     markup.add(InlineKeyboardButton("Cancel", callback_data="cancel_description"))
 
     sent_message = await bot.send_message(callback_query.message.chat.id,
-                                          "Please enter the new description for the channel:", reply_markup=markup)
+                                          "Введите новое описание:", reply_markup=markup)
 
     # Store the bot's message ID and the callback query's message ID in the state
     await state.set_data({
@@ -99,6 +92,7 @@ async def description_handler(callback_query: types.CallbackQuery, state: FSMCon
 @dp.message_handler(state=DescriptionState.waiting_for_description)
 async def process_description(message: types.Message, state: FSMContext):
     # Retrieve the message IDs from the state
+    await message.answer("Описание сохранено.")
     data = await state.get_data()
     messages_to_delete = data.get('messages_to_delete', [])
 
@@ -124,24 +118,24 @@ async def cancel_description(callback_query: types.CallbackQuery, state: FSMCont
     await state.finish()
 
 
-@dp.callback_query_handler(lambda c: c.data.startswith("lang_settings_"))
-async def language_settings_handler(callback_query: types.CallbackQuery, state: FSMContext):
-    await callback_query.answer()
-    channel_id = int(callback_query.data.split("_")[2])
-    channel_name = callback_query.data.split("_")[3]
-
-    markup = InlineKeyboardMarkup(row_width=1).add(
-        InlineKeyboardButton("Edit Language", callback_data=f"edit_language_{channel_id}_{channel_name}"),
-        InlineKeyboardButton("Edit Flags", callback_data=f"edit_flags_{channel_id}_{channel_name}"),
-        InlineKeyboardButton("Back to Options", callback_data=f"customization_{channel_id}_{channel_name}")
-    )
-
-    await bot.edit_message_text(
-        chat_id=callback_query.message.chat.id,
-        message_id=callback_query.message.message_id,
-        text=f"Language settings for: {channel_name}",
-        reply_markup=markup
-    )
+# @dp.callback_query_handler(lambda c: c.data.startswith("lang_settings_"))
+# async def language_settings_handler(callback_query: types.CallbackQuery, state: FSMContext):
+#     await callback_query.answer()
+#     channel_id = int(callback_query.data.split("_")[2])
+#     channel_name = callback_query.data.split("_")[3]
+#
+#     markup = InlineKeyboardMarkup(row_width=1).add(
+#         InlineKeyboardButton("Edit Language", callback_data=f"edit_language_{channel_id}_{channel_name}"),
+#         InlineKeyboardButton("Edit Flags", callback_data=f"edit_flags_{channel_id}_{channel_name}"),
+#         InlineKeyboardButton("Back to Options", callback_data=f"customization_{channel_id}_{channel_name}")
+#     )
+#
+#     await bot.edit_message_text(
+#         chat_id=callback_query.message.chat.id,
+#         message_id=callback_query.message.message_id,
+#         text=f"Language settings for: {channel_name}",
+#         reply_markup=markup
+#     )
 
 
 @dp.callback_query_handler(lambda c: c.data.startswith("edit_language_"))
@@ -152,71 +146,72 @@ async def edit_language_handler(callback_query: types.CallbackQuery, state: FSMC
 
     markup = InlineKeyboardMarkup(row_width=1).add(
         InlineKeyboardButton("RU", callback_data=f"language_ru_{channel_id}_{channel_name}"),
-        InlineKeyboardButton("EU", callback_data=f"language_en_{channel_id}_{channel_name}"),
+        InlineKeyboardButton("EN", callback_data=f"language_en_{channel_id}_{channel_name}"),
         InlineKeyboardButton("UA", callback_data=f"language_uk_{channel_id}_{channel_name}"),
-        InlineKeyboardButton("Back", callback_data=f"lang_settings_{channel_id}_{channel_name}")
+        InlineKeyboardButton("Назад", callback_data=f"customization_{channel_id}_{channel_name}")
     )
 
     await bot.edit_message_text(
         chat_id=callback_query.message.chat.id,
         message_id=callback_query.message.message_id,
-        text=f"Language settings for: {channel_name}",
+        text=f"Настройки региона для: {channel_name}",
         reply_markup=markup
     )
 
 
-@dp.callback_query_handler(lambda c: c.data.startswith("edit_flags_"))
-async def edit_flags_handler(callback_query: types.CallbackQuery, state: FSMContext):
-    await callback_query.answer()
-    channel_id = int(callback_query.data.split("_")[2])
-    channel_name = callback_query.data.split("_")[3]
+# @dp.callback_query_handler(lambda c: c.data.startswith("edit_flags_"))
+# async def edit_flags_handler(callback_query: types.CallbackQuery, state: FSMContext):
+#     await callback_query.answer()
+#     channel_id = int(callback_query.data.split("_")[2])
+#     channel_name = callback_query.data.split("_")[3]
+#
+#     # Create inline buttons for flags options
+#     markup = InlineKeyboardMarkup(row_width=1).add(
+#         InlineKeyboardButton("🇷🇺 Russia", callback_data=f"flagchoice_ru_{channel_id}_{channel_name}"),
+#         InlineKeyboardButton("🇬🇧 UK", callback_data=f"flagchoice_en_{channel_id}_{channel_name}"),
+#         InlineKeyboardButton("🇺🇦 Ukraine", callback_data=f"flagchoice_uk_{channel_id}_{channel_name}"),
+#         InlineKeyboardButton("Back", callback_data=f"lang_settings_{channel_id}_{channel_name}")
+#     )
+#
+#     await bot.edit_message_text(
+#         chat_id=callback_query.message.chat.id,
+#         message_id=callback_query.message.message_id,
+#         text=f"Choose a flag for the channel: {channel_name}",
+#         reply_markup=markup
+#     )
 
-    # Create inline buttons for flags options
-    markup = InlineKeyboardMarkup(row_width=1).add(
-        InlineKeyboardButton("🇷🇺 Russia", callback_data=f"flagchoice_ru_{channel_id}_{channel_name}"),
-        InlineKeyboardButton("🇬🇧 UK", callback_data=f"flagchoice_en_{channel_id}_{channel_name}"),
-        InlineKeyboardButton("🇺🇦 Ukraine", callback_data=f"flagchoice_uk_{channel_id}_{channel_name}"),
-        InlineKeyboardButton("Back", callback_data=f"lang_settings_{channel_id}_{channel_name}")
-    )
 
-    await bot.edit_message_text(
-        chat_id=callback_query.message.chat.id,
-        message_id=callback_query.message.message_id,
-        text=f"Choose a flag for the channel: {channel_name}",
-        reply_markup=markup
-    )
-
-
-@dp.callback_query_handler(lambda c: c.data.startswith("flagchoice_"))
-async def flag_choice_handler(callback_query: types.CallbackQuery, state: FSMContext):
-    await callback_query.answer()
-    _, flag_iso_code, channel_id, channel_name = callback_query.data.split("_")
-
-    flag_names = {
-        "ru": "ru",
-        "en": "us",
-        "uk": "ua"
-    }
-
-    selected_flag_name = flag_names.get(flag_iso_code, "Unknown")
-
-    # Update flag in the backend
-    update_channel_flag(channel_id, selected_flag_name)
-
-    await bot.answer_callback_query(callback_query.id, text=f"Flag for {channel_name} updated to {selected_flag_name}")
+# @dp.callback_query_handler(lambda c: c.data.startswith("flagchoice_"))
+# async def flag_choice_handler(callback_query: types.CallbackQuery, state: FSMContext):
+#     await callback_query.answer()
+#     _, flag_iso_code, channel_id, channel_name = callback_query.data.split("_")
+#
+#     flag_names = {
+#         "ru": "ru",
+#         "en": "us",
+#         "uk": "ua"
+#     }
+#
+#     selected_flag_name = flag_names.get(flag_iso_code, "Unknown")
+#
+#     # Update flag in the backend
+#     update_channel_flag(channel_id, selected_flag_name)
+#
+#     await bot.answer_callback_query(callback_query.id, text=f"Flag for {channel_name} updated to {selected_flag_name}")
 
 
 @dp.callback_query_handler(lambda c: c.data.startswith("language_"))
 async def language_selection_handler(callback_query: types.CallbackQuery, state: FSMContext):
-    await callback_query.answer()
     chosen_language = callback_query.data.split("_")[1]
     channel_id = int(callback_query.data.split("_")[2])
     channel_name = callback_query.data.split("_")[3]
+    if chosen_language == "uk":
+        chosen_language = "ua"
 
     # Update the channel's language in the backend
     await update_channel_language(channel_id, chosen_language)
 
-    await bot.answer_callback_query(callback_query.id, text=f"Language for {channel_name} updated to {chosen_language}")
+    await bot.answer_callback_query(callback_query.id, text=f"Регион {channel_name} изменен на {chosen_language}", show_alert=True)
 
 
 @dp.callback_query_handler(lambda c: c.data.startswith("promotion_"))
@@ -235,7 +230,7 @@ async def promotion_submenu_handler(callback_query: types.CallbackQuery, state: 
     await bot.edit_message_text(
         chat_id=callback_query.message.chat.id,
         message_id=callback_query.message.message_id,
-        text=f"PromoPost is {'on' if promo_post_status else 'off'}:",
+        text=f"Автопост по времени {'включен' if promo_post_status else 'выключен'}:",
         reply_markup=promotion_submenu_markup
     )
 
@@ -272,7 +267,7 @@ async def process_toggle_promo_post_button(callback_query: types.CallbackQuery, 
     await bot.edit_message_text(
         chat_id=callback_query.message.chat.id,
         message_id=callback_query.message.message_id,
-        text=f"PromoPost is {'on' if new_promo_post_enabled else 'off'}",
+        text=f"Автопост по времени {'включен' if new_promo_post_enabled else 'выключен'}",
         reply_markup=markup
     )
 
@@ -294,12 +289,12 @@ async def create_promo_post_menu(channel_id, channel_name, state: FSMContext):
         current_interval = data['promo_post_interval']
 
     markup = InlineKeyboardMarkup(row_width=1)
-    toggle_text = "Disable" if promo_post_enabled else "Enable"
+    toggle_text = "Выключить" if promo_post_enabled else "Включить"
     toggle_callback_data = f"togglepromopost_{channel_id}_{channel_name}"
 
     save_changes_data = f"savechanges_{channel_id}_{channel_name}"
 
-    markup.add(InlineKeyboardButton(f"{toggle_text} Promo Post", callback_data=toggle_callback_data))
+    markup.add(InlineKeyboardButton(f"{toggle_text} автопост", callback_data=toggle_callback_data))
     markup.row(
         InlineKeyboardButton("-", callback_data=f"decreasetime_{channel_id}_{channel_name}_{current_time}"),
         InlineKeyboardButton(f"{current_time}", callback_data="noop"),
@@ -308,13 +303,13 @@ async def create_promo_post_menu(channel_id, channel_name, state: FSMContext):
 
     markup.row(
         InlineKeyboardButton("-", callback_data=f"decreaseinterval_{channel_id}_{channel_name}_{current_interval}"),
-        InlineKeyboardButton(f"{current_interval} days", callback_data="noop"),
+        InlineKeyboardButton(f"{current_interval} дней", callback_data="noop"),
         InlineKeyboardButton("+", callback_data=f"increaseinterval_{channel_id}_{channel_name}_{current_interval}")
     )
 
     markup.add(
-        InlineKeyboardButton("Back", callback_data=f"customization_{channel_id}_{channel_name}"),
-        InlineKeyboardButton("Save", callback_data=save_changes_data)
+        InlineKeyboardButton("Сохранить", callback_data=save_changes_data),
+        InlineKeyboardButton("Назад", callback_data=f"autopost_{channel_id}_{channel_name}"),
     )
     return markup
 
@@ -387,7 +382,7 @@ async def handle_save_changes(callback_query: types.CallbackQuery, state: FSMCon
     success = updateChannelDetails(channel_id, promo_post_time, int(promo_post_interval))
     print(success)
     if success:
-        await bot.answer_callback_query(callback_query.id, "Details saved successfully!")
+        await bot.answer_callback_query(callback_query.id, "Сохранено!", show_alert=True)
         await state.finish()  # End the state once the changes are saved
     else:
         await bot.answer_callback_query(callback_query.id, "Failed to save details. Please try again.")
@@ -434,14 +429,14 @@ async def tags_handler(callback_query: types.CallbackQuery, state: FSMContext):
         callback_data = f"tags_{channel_id}_{channel_name}_toggle_{tag}"
         markup.add(InlineKeyboardButton(button_text, callback_data=callback_data))
 
-    markup.add(InlineKeyboardButton("Save", callback_data=f"save_tags_{channel_id}"))
-    markup.add(InlineKeyboardButton("Back", callback_data=f"customization_{channel_id}_{channel_name}"))
+    markup.add(InlineKeyboardButton("Сохранить", callback_data=f"save_tags_{channel_id}"))
+    markup.add(InlineKeyboardButton("Назад", callback_data=f"customization_{channel_id}_{channel_name}"))
 
     # Send a message with available tags
     await bot.edit_message_text(
         chat_id=callback_query.message.chat.id,
         message_id=callback_query.message.message_id,
-        text="Available tags:",
+        text=f"Выберите до {tag_limit} тегов:",
         reply_markup=markup
     )
 
@@ -468,7 +463,7 @@ async def save_tags_handler(callback_query: types.CallbackQuery, state: FSMConte
     tags_string = ", ".join(selected_tags)
 
     # Send a message indicating that the customization is saved
-    await callback_query.answer(f"Customization saved with tags: {tags_string}")
+    await callback_query.answer(f"Теги: {tags_string} были сохранены.", show_alert=True)
 
     # update tags dict
     async with state.proxy() as data:
@@ -553,7 +548,7 @@ async def process_subscription_button(callback_query: types.CallbackQuery):
                                      callback_data=f"subscriptionchoice_{channel_id}_{channel_name}_{subscription['id']}"),
             )
         markup.add(
-            InlineKeyboardButton("Back to Menu", callback_data=f"channel_{channel_id}_{channel_name}")
+            InlineKeyboardButton("Назад", callback_data=f"channel_{channel_id}_{channel_name}")
         )
 
         with open('subscription_image.jpg', 'rb') as photo_file:
@@ -597,7 +592,7 @@ async def process_subscription_choice(callback_query: types.CallbackQuery, state
             invoice_prices = [{"label": "Руб", "amount": selected_subscription['price'] * 100}]
 
             # Send a message with the cancel option and store its message ID
-            cancel_button = InlineKeyboardButton("Cancel", callback_data="cancel_subscription")
+            cancel_button = InlineKeyboardButton("Отмена", callback_data="cancel_subscription")
             keyboard = InlineKeyboardMarkup()
             keyboard.add(cancel_button)
 
@@ -696,7 +691,7 @@ async def process_bump_button(callback_query: types.CallbackQuery):
 
     if response is not None:
         if response.status_code == 204:
-            await callback_query.answer("Channel bumped successfully.")
+            await callback_query.answer("Канал успешно продвинут. Следующий бамп через 03:59:59.", show_alert=True)
         elif response.status_code == 400:
             time_left = response.headers.get("X-TimeLeft")
             if time_left:
@@ -704,8 +699,8 @@ async def process_bump_button(callback_query: types.CallbackQuery):
                 duration = timedelta(seconds=time_left)
                 hours = duration.seconds // 3600
                 minutes = (duration.seconds // 60) % 60
-                time_left_str = f"{hours} hours and {minutes} minutes"
-                await callback_query.answer(f"Next bump available in {time_left_str}.")
+                time_left_str = f"{hours} часов {minutes} минут"
+                await callback_query.answer(f"Продвижение канала будет доступно через {time_left_str}.", show_alert=True)
             else:
                 await callback_query.answer("Failed to bump the channel.")
         else:

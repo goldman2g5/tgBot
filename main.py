@@ -10,6 +10,7 @@ from Handlers.add_channel_handlers import *
 from Handlers_new.notifications_settings import *
 from Handlers_new.admin_handlers import *
 from Handlers_new.support_handlers import *
+from Handlers_new.autopost_handlers import *
 
 
 from aiogram.utils import executor
@@ -18,16 +19,6 @@ from bot import dp, pyro_client
 from socket_service import *
 
 from throthling_middleware import ThrottlingMiddleware
-
-
-# async def start_client():
-#     print("Starting client...")
-#     try:
-#         await client.start()
-#         me = await client.api.get_me()
-#         logging.info(f"Successfully logged in as {me.json()}")
-#     except Exception as e:
-#         logging.error(f"Error starting client: {e}")
 
 
 async def start_pyro_client():

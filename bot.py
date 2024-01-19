@@ -20,12 +20,6 @@ bot_token = config['bot']['BOT_TOKEN']
 bot_token_secret = SecretStr(config['bot']['BOT_TOKEN'])
 PHONE_NUMBER = config['bot']['PHONE_NUMBER']
 
-#client = Client(
-#     api_id=API_ID,
-#     api_hash=API_HASH,
-#     phone_number=PHONE_NUMBER,
-#     library_path='C:\\td\\tdlib\\bin\\tdjson.dll'
-#)
 pyro_client = pyroClient(
     "my_account",
     api_id=API_ID,

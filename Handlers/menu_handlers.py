@@ -185,17 +185,17 @@ async def manage_channels_handler(callback_query: types.CallbackQuery):
             button_text = f"{channel['name']} - {channel['description']}"
             callback_data = f"channel_{channel['id']}_{channel['name']}"
             markup.add(InlineKeyboardButton(button_text, callback_data=callback_data))
-        markup.add(InlineKeyboardButton("Back to Menu", callback_data="back_to_menu"))
+        markup.add(InlineKeyboardButton("В главное меню", callback_data="back_to_menu"))
         if callback_query.message.reply_markup:
             # Edit the existing message with the updated inline keyboard
             await bot.edit_message_text(
                 chat_id=callback_query.message.chat.id,
                 message_id=callback_query.message.message_id,
                 reply_markup=markup,
-                text=f"Your channels:",
+                text=f"Ваши каналы:",
             )
         else:
             # Send a new message with the inline keyboard
-            await callback_query.message.answer(text="Your channels:", reply_markup=markup)
+            await callback_query.message.answer(text="Ваши каналы:", reply_markup=markup)
     else:
-        await callback_query.message.answer("You don't have any channels.")
+        await callback_query.message.answer("У вас нет каналов.")
