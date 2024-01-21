@@ -3,6 +3,7 @@ from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters.state import StatesGroup, State
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ContentType
 
+from api import get_channel_url_by_id
 from bot import dp
 from misc import create_notifications_menu
 from socket_service import *
@@ -13,6 +14,7 @@ async def channel_menu_handler(callback_query: types.CallbackQuery):
     await callback_query.answer()
     channel_id = int(callback_query.data.split("_")[1])
     channel_name = callback_query.data.split("_")[2]
+    channel_link = await get_channel_url_by_id(channel_id)
 
     # Create inline buttons for channel menu
     markup = InlineKeyboardMarkup(row_width=1)
@@ -33,7 +35,7 @@ async def channel_menu_handler(callback_query: types.CallbackQuery):
             chat_id=callback_query.message.chat.id,
             message_id=callback_query.message.message_id,
             reply_markup=markup,
-            text=f"@{channel_name} личный кабинет:",
+            text=f"@{channel_link} личный кабинет:",
         )
     else:
         # Send a new message with the inline keyboard
@@ -50,6 +52,7 @@ async def customization_handler(callback_query: types.CallbackQuery, state: FSMC
     await callback_query.answer()
     channel_id = int(callback_query.data.split("_")[1])
     channel_name = callback_query.data.split("_")[2]
+    channel_link = await get_channel_url_by_id(channel_id)
 
     await state.finish()
 
@@ -67,7 +70,7 @@ async def customization_handler(callback_query: types.CallbackQuery, state: FSMC
     await bot.edit_message_text(
         chat_id=callback_query.message.chat.id,
         message_id=callback_query.message.message_id,
-        text=f"Customization options: {channel_name}",
+        text=f"Настройки канала: @{channel_link}",
         reply_markup=markup
     )
 
@@ -211,7 +214,7 @@ async def language_selection_handler(callback_query: types.CallbackQuery, state:
     # Update the channel's language in the backend
     await update_channel_language(channel_id, chosen_language)
 
-    await bot.answer_callback_query(callback_query.id, text=f"Регион {channel_name} изменен на {chosen_language}", show_alert=True)
+    await bot.answer_callback_query(callback_query.id, text=f"Регион  для канала {channel_name} изменен на {chosen_language}", show_alert=True)
 
 
 @dp.callback_query_handler(lambda c: c.data.startswith("promotion_"))
@@ -683,7 +686,6 @@ async def process_pay(message: types.Message):
 # Handler for bump button callback
 @dp.callback_query_handler(lambda c: c.data.startswith("bump_"))
 async def process_bump_button(callback_query: types.CallbackQuery):
-    await callback_query.answer()
     channel_id = int(callback_query.data.split("_")[1])
 
     # Call the API method to bump the channel
@@ -691,7 +693,7 @@ async def process_bump_button(callback_query: types.CallbackQuery):
 
     if response is not None:
         if response.status_code == 204:
-            await callback_query.answer("Канал успешно продвинут. Следующий бамп через 03:59:59.", show_alert=True)
+            await callback_query.answer("Канал успешно продвинут.\nСледующий бамп через 03:59:59.", show_alert=True)
         elif response.status_code == 400:
             time_left = response.headers.get("X-TimeLeft")
             if time_left:
