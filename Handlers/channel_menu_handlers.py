@@ -1,7 +1,8 @@
 from aiogram import types
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters.state import StatesGroup, State
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ContentType
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ContentType, InputMediaPhoto, \
+    InputFile
 
 from api import get_channel_url_by_id
 from bot import dp
@@ -29,17 +30,20 @@ async def channel_menu_handler(callback_query: types.CallbackQuery):
         InlineKeyboardButton("Назад", callback_data="manage_channels")
     )
 
-    if callback_query.message.reply_markup:
-        # Edit the existing message with the updated inline keyboard
-        await bot.edit_message_text(
-            chat_id=callback_query.message.chat.id,
-            message_id=callback_query.message.message_id,
-            reply_markup=markup,
-            text=f"@{channel_link} личный кабинет:",
-        )
-    else:
-        # Send a new message with the inline keyboard
-        await callback_query.message.answer(reply_markup=markup)
+    try:
+        type = callback_query.data.split('_')[3]
+        if type == 'respawn':
+            await callback_query.message.answer(
+                reply_markup=markup,
+                text=f"@{channel_link} личный кабинет:"
+            )
+            await callback_query.message.delete()
+        else:
+            await callback_query.message.edit_text(reply_markup=markup,
+                                                   text=f"@{channel_link} личный кабинет:")
+    except:
+        await callback_query.message.edit_text(reply_markup=markup,
+                                               text=f"@{channel_link} личный кабинет:")
 
 
 class DescriptionState(StatesGroup):
@@ -47,7 +51,7 @@ class DescriptionState(StatesGroup):
 
 
 @dp.callback_query_handler(
-lambda c: c.data.startswith("customization_") and not c.data.startswith("customization_description"))
+    lambda c: c.data.startswith("customization_") and not c.data.startswith("customization_description"))
 async def customization_handler(callback_query: types.CallbackQuery, state: FSMContext):
     await callback_query.answer()
     channel_id = int(callback_query.data.split("_")[1])
@@ -214,7 +218,9 @@ async def language_selection_handler(callback_query: types.CallbackQuery, state:
     # Update the channel's language in the backend
     await update_channel_language(channel_id, chosen_language)
 
-    await bot.answer_callback_query(callback_query.id, text=f"Регион  для канала {channel_name} изменен на {chosen_language}", show_alert=True)
+    await bot.answer_callback_query(callback_query.id,
+                                    text=f"Регион  для канала {channel_name} изменен на {chosen_language}",
+                                    show_alert=True)
 
 
 @dp.callback_query_handler(lambda c: c.data.startswith("promotion_"))
@@ -229,13 +235,22 @@ async def promotion_submenu_handler(callback_query: types.CallbackQuery, state: 
 
     promotion_submenu_markup = await create_promo_post_menu(channel_id, channel_name, state)
 
-    # Edit a message with the promotion submenu options
-    await bot.edit_message_text(
-        chat_id=callback_query.message.chat.id,
-        message_id=callback_query.message.message_id,
-        text=f"Автопост по времени {'включен' if promo_post_status else 'выключен'}:",
-        reply_markup=promotion_submenu_markup
-    )
+    try:
+        type = callback_query.data.split('_')[3]
+        if type == 'respawn':
+            await callback_query.message.answer(
+                text=f"Автопост по времени {'включен' if promo_post_status else 'выключен'}:",
+                reply_markup=promotion_submenu_markup
+            )
+            await callback_query.message.delete()
+        else:
+            await callback_query.message.edit_text(
+                text=f"Автопост по времени {'включен' if promo_post_status else 'выключен'}:",
+                reply_markup=promotion_submenu_markup)
+    except:
+        await callback_query.message.edit_text(
+            text=f"Автопост по времени {'включен' if promo_post_status else 'выключен'}:",
+            reply_markup=promotion_submenu_markup)
 
 
 # Handler for the "Enable/Disable Promo Post" button
@@ -551,20 +566,19 @@ async def process_subscription_button(callback_query: types.CallbackQuery):
                                      callback_data=f"subscriptionchoice_{channel_id}_{channel_name}_{subscription['id']}"),
             )
         markup.add(
-            InlineKeyboardButton("Назад", callback_data=f"channel_{channel_id}_{channel_name}")
+            InlineKeyboardButton("Назад", callback_data=f"channel_{channel_id}_{channel_name}_respawn")
         )
 
-        with open('subscription_image.jpg', 'rb') as photo_file:
-            if callback_query.message.reply_markup:
-                # Edit the existing message with the updated inline keyboard
-                await bot.edit_message_reply_markup(
-                    chat_id=callback_query.message.chat.id,
-                    message_id=callback_query.message.message_id,
-                    reply_markup=markup
-                )
-            else:
-                # Send a new message with the photo and inline keyboard
-                await callback_query.message.reply_photo(photo_file, reply_markup=markup)
+        file = InputFile('subscription_image.png')
+        image = InputMediaPhoto(file, 'zxczxc')
+        if callback_query.message.reply_markup:
+            # Edit the existing message with the updated inline keyboard
+            await callback_query.message.answer_photo(file, caption='zxczxc', reply_markup=markup)
+            await callback_query.message.delete()
+            await callback_query.message.edit_media(image, reply_markup=markup)
+        else:
+            # Send a new message with the photo and inline keyboard
+            await callback_query.message.reply_photo(image, reply_markup=markup)
     else:
         # Handle error if API request fails
         await callback_query.answer("Failed to retrieve subscription data from the API.")
@@ -702,7 +716,8 @@ async def process_bump_button(callback_query: types.CallbackQuery):
                 hours = duration.seconds // 3600
                 minutes = (duration.seconds // 60) % 60
                 time_left_str = f"{hours} часов {minutes} минут"
-                await callback_query.answer(f"Продвижение канала будет доступно через {time_left_str}.", show_alert=True)
+                await callback_query.answer(f"Продвижение канала будет доступно через {time_left_str}.",
+                                            show_alert=True)
             else:
                 await callback_query.answer("Failed to bump the channel.")
         else:

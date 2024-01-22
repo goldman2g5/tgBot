@@ -375,6 +375,26 @@ async def get_all_supports(user_id: int):
                 return None
 
 
+async def remove_support(user_id: int, support_id: int) -> bool:
+    endpoint = f'{API_URL}/Admin/DeleteSupport/{user_id}/{support_id}'
+    async with aiohttp.ClientSession(headers=default_headers) as session:
+        async with session.post(endpoint) as response:
+            if response.status == 200:
+                return True
+            else:
+                return False
+
+
+async def add_support(user_id, support_id):
+    endpoint = f'{API_URL}/Admin/AddSupport/{user_id}/{support_id}'
+    async with aiohttp.ClientSession(headers=default_headers) as session:
+        async with session.post(endpoint) as response:
+            if response.status == 200:
+                return True
+            else:
+                return False
+
+
 async def get_user_notifications_settings(telegram_id: int) -> Optional[dict]:
     endpoint = f'{API_URL}/Notification/GetNotificationSettings/{telegram_id}'
     async with aiohttp.ClientSession(headers=default_headers) as session:
@@ -431,6 +451,16 @@ async def get_channel_url_by_id(channel_id):
             if response.status == 200:
                 url: str = (await response.json())['url']
                 return url.split('https://t.me/')[1]
+            else:
+                raise Exception("Error while getting.")
+
+
+async def get_channel_id_by_id(channel_id):
+    async with aiohttp.ClientSession(headers=default_headers) as session:
+        async with session.get(f'{API_URL}/Channel/{channel_id}') as response:
+            if response.status == 200:
+                telegram_id: int = (await response.json())['telegramId']
+                return telegram_id
             else:
                 raise Exception("Error while getting.")
 

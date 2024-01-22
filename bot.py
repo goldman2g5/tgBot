@@ -27,6 +27,6 @@ pyro_client = pyroClient(
 )
 
 # Initialize the bot and dispatcher
-bot = Bot(token=config['bot']['BOT_TOKEN'])
+bot = Bot(token=config['bot']['BOT_TOKEN'], parse_mode='HTML')
 storage = MemoryStorage()
 dp = Dispatcher(bot, storage=storage)
