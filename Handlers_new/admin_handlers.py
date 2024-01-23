@@ -213,6 +213,6 @@ async def admin_reports(callback: types.CallbackQuery):
         text = f"{channel['channelName']} - {channel['reportCount']} Reports"
         callback_data = f'support:reports:channel_select:{channel["channelId"]}'
         keyboard.add(types.InlineKeyboardButton(text, callback_data=callback_data))
-    keyboard.add(types.InlineKeyboardButton('Back', callback_data='support'))
+    keyboard.add(types.InlineKeyboardButton('Back', callback_data='admin'))
 
     await callback.message.edit_text('Channels:', reply_markup=keyboard)
