@@ -85,9 +85,10 @@ async def cmd_start(message: types.Message, state: FSMContext):
         connection_id = args
         send_message(connection_id, username, user_id)
         markup = InlineKeyboardMarkup()
-        markup.add(InlineKeyboardButton("Got it", callback_data="remove_authorize_msg"))
+        markup.add(InlineKeyboardButton("✅", callback_data="remove_authorize_msg"))
         await bot.delete_message(message.chat.id, message.message_id)
-        await bot.send_message(message.chat.id, "You are authorized, go back to the website", reply_markup=markup)
+        await bot.send_message(message.chat.id, "Вы успешно авторизовались, возвращайтесь на сайт.",
+                               reply_markup=markup)
         return
 
     markup = InlineKeyboardMarkup(row_width=1)
@@ -97,6 +98,12 @@ async def cmd_start(message: types.Message, state: FSMContext):
                InlineKeyboardButton("Настройка уведомлений", callback_data="xxx_notifications_settings"))
 
     await bot.send_message(message.chat.id, "Меню:", reply_markup=markup)
+
+
+@dp.callback_query_handler(lambda c: c.data == "remove_authorize_msg")
+async def remove_authorize_msg_handler(callback_query: types.CallbackQuery):
+    await callback_query.answer()
+    await bot.delete_message(callback_query.message.chat.id, callback_query.message.message_id)
 
 
 YCASSATOKEN = "381764678:TEST:59527"
@@ -113,7 +120,7 @@ async def start_payment_process(message: types.Message, payment_data: dict, stat
             invoice_payload = f"{payment_data['channelId']}_{payment_data['channelName']}_{selected_subscription['id']}_{selected_subscription['name']}"
             invoice_currency = "RUB"
             price_amount = selected_subscription['price'] - (
-                        selected_subscription['price'] * payment_data.get('discount', 0) / 100)
+                    selected_subscription['price'] * payment_data.get('discount', 0) / 100)
             invoice_prices = [LabeledPrice(label="RUB", amount=int(price_amount * 100))]
 
             invoice_message = await bot.send_invoice(

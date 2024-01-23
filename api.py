@@ -450,7 +450,11 @@ async def get_channel_url_by_id(channel_id):
         async with session.get(f'{API_URL}/Channel/{channel_id}') as response:
             if response.status == 200:
                 url: str = (await response.json())['url']
-                return url.split('https://t.me/')[1]
+                if url.startswith('https://t.me/+'):
+                    name = (await response.json())['name']
+                    return f'<a href="{url}">@{name}</a>'
+                else:
+                    return '@' + url.split('https://t.me/')[1]
             else:
                 raise Exception("Error while getting.")
 

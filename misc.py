@@ -41,10 +41,10 @@ async def open_menu(chat_id: int, message_id: int):
 # Common function to create inline buttons for notifications menu
 def create_notifications_menu(channel_id, channel_name, notifications_enabled):
     markup = InlineKeyboardMarkup(row_width=1)
-    toggle_text = "Disable" if notifications_enabled else "Enable"
+    toggle_text = "Выключить" if notifications_enabled else "Включить"
     toggle_callback_data = f"toggle_notifications_{channel_id}_{channel_name}"
     markup.add(
-        InlineKeyboardButton(f"{toggle_text} Notifications", callback_data=toggle_callback_data),
-        InlineKeyboardButton("Back to Menu", callback_data=f"channel_{channel_id}_{channel_name}")
+        InlineKeyboardButton(f"{toggle_text} уведомения", callback_data=toggle_callback_data),
+        InlineKeyboardButton("Назад", callback_data=f"channel_{channel_id}_{channel_name}")
     )
     return markup

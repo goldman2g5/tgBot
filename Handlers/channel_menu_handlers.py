@@ -35,15 +35,15 @@ async def channel_menu_handler(callback_query: types.CallbackQuery):
         if type == 'respawn':
             await callback_query.message.answer(
                 reply_markup=markup,
-                text=f"@{channel_link} личный кабинет:"
+                text=f"{channel_link} личный кабинет:"
             )
             await callback_query.message.delete()
         else:
             await callback_query.message.edit_text(reply_markup=markup,
-                                                   text=f"@{channel_link} личный кабинет:")
+                                                   text=f"{channel_link} личный кабинет:")
     except:
         await callback_query.message.edit_text(reply_markup=markup,
-                                               text=f"@{channel_link} личный кабинет:")
+                                               text=f"{channel_link} личный кабинет:")
 
 
 class DescriptionState(StatesGroup):
@@ -74,7 +74,7 @@ async def customization_handler(callback_query: types.CallbackQuery, state: FSMC
     await bot.edit_message_text(
         chat_id=callback_query.message.chat.id,
         message_id=callback_query.message.message_id,
-        text=f"Настройки канала: @{channel_link}",
+        text=f"Настройки канала: {channel_link}",
         reply_markup=markup
     )
 
@@ -83,7 +83,7 @@ async def customization_handler(callback_query: types.CallbackQuery, state: FSMC
 async def description_handler(callback_query: types.CallbackQuery, state: FSMContext):
     await callback_query.answer()
     markup = InlineKeyboardMarkup()
-    markup.add(InlineKeyboardButton("Cancel", callback_data="cancel_description"))
+    markup.add(InlineKeyboardButton("Отмена", callback_data="cancel_description"))
 
     sent_message = await bot.send_message(callback_query.message.chat.id,
                                           "Введите новое описание:", reply_markup=markup)
@@ -99,7 +99,9 @@ async def description_handler(callback_query: types.CallbackQuery, state: FSMCon
 @dp.message_handler(state=DescriptionState.waiting_for_description)
 async def process_description(message: types.Message, state: FSMContext):
     # Retrieve the message IDs from the state
-    await message.answer("Описание сохранено.")
+    keyboard = InlineKeyboardMarkup()
+    keyboard.add(InlineKeyboardButton("Ок", callback_data="remove_authorize_msg"))
+    await message.answer("Описание сохранено.", reply_markup=keyboard)
     data = await state.get_data()
     messages_to_delete = data.get('messages_to_delete', [])
 
@@ -427,7 +429,7 @@ async def tags_handler(callback_query: types.CallbackQuery, state: FSMContext):
                 if tags[tag] or sum(tags.values()) < tag_limit:
                     tags[tag] = not tags[tag]
                 else:
-                    await callback_query.answer("Tag limit reached", show_alert=True)
+                    await callback_query.answer("Достигнут лимит тегов", show_alert=True)
                     return  # Prevent further processing
 
     else:
@@ -508,7 +510,7 @@ async def process_notifications_button(callback_query: types.CallbackQuery):
     await bot.edit_message_text(
         chat_id=callback_query.message.chat.id,
         message_id=callback_query.message.message_id,
-        text=f"Notifications is {'on' if notifications_enabled else 'off'}",
+        text=f"Уведомления {'включены' if notifications_enabled else 'выключены'}",
         reply_markup=markup
     )
 
@@ -543,7 +545,7 @@ async def process_toggle_notifications_button(callback_query: types.CallbackQuer
     await bot.edit_message_text(
         chat_id=callback_query.message.chat.id,
         message_id=callback_query.message.message_id,
-        text=f"Notifications is {'on' if new_notifications_enabled else 'off'}",
+        text=f"Уведомления {'включены' if new_notifications_enabled else 'выключены'}",
         reply_markup=markup
     )
 
