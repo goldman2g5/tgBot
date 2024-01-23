@@ -201,7 +201,7 @@ async def confirm_remove(callback: types.CallbackQuery):
 async def admin_reports(callback: types.CallbackQuery):
     await callback.answer()
     async with aiohttp.ClientSession() as session:
-        async with session.get(f'{API_URL}/Auth/Reports/{callback.from_user.id}', ssl=False) as response:
+        async with session.get(f'{API_URL}/Admin/Reports/{callback.from_user.id}', ssl=False) as response:
             if response.status == 200:
                 channels = await response.json()
             else:
