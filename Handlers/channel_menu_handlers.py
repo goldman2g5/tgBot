@@ -4,7 +4,9 @@ from aiogram.dispatcher.filters.state import StatesGroup, State
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ContentType, InputMediaPhoto, \
     InputFile
 
-from api import get_channel_url_by_id
+from datetime import datetime, timedelta
+
+from api import get_channel_url_by_id, get_user_subscriptions_data
 from bot import dp
 from misc import create_notifications_menu
 from socket_service import *
@@ -571,11 +573,26 @@ async def process_subscription_button(callback_query: types.CallbackQuery):
             InlineKeyboardButton("Назад", callback_data=f"channel_{channel_id}_{channel_name}_respawn")
         )
 
+        user_subscriptions = await get_user_subscriptions_data(callback_query.from_user.id)
+        channel_subscription = None
+        for user_subscription in user_subscriptions:
+            if user_subscription['channelId'] == channel_id:
+                channel_subscription = user_subscription
+                break
+
+        if not channel_subscription:
+            msg_text = "<b>Подписка не оформлена</b>"
+        else:
+            sub_type = channel_subscription['subscriptionTypeName']
+            sub_untill = datetime.strptime(channel_subscription['expirationDate'], '%Y-%m-%dT%H:%M:%S.%f')
+            sub_untill_formated = sub_untill.strftime('%d.%m.%Y')
+            msg_text = f"Подписка <b>{sub_type}</b> активна до <b>{sub_untill_formated}</b>"
+
         file = InputFile('subscription_image.png')
-        image = InputMediaPhoto(file, 'zxczxc')
+        image = InputMediaPhoto(file)
         if callback_query.message.reply_markup:
             # Edit the existing message with the updated inline keyboard
-            await callback_query.message.answer_photo(file, caption='zxczxc', reply_markup=markup)
+            await callback_query.message.answer_photo(file, caption=msg_text, reply_markup=markup)
             await callback_query.message.delete()
             await callback_query.message.edit_media(image, reply_markup=markup)
         else:

@@ -236,6 +236,15 @@ def get_subscriptions_from_api():
         return None
 
 
+async def get_user_subscriptions_data(user_id):
+    async with aiohttp.ClientSession(headers=default_headers) as session:
+        async with session.get(f'{API_URL}/User/ActiveSubscriptions/{user_id}') as response:
+            if response.status == 200:
+                return await response.json()
+            else:
+                return None
+
+
 def get_channel_tag_limit(channel_id):
     channel = getChannelById(channel_id)
     if channel is None:
