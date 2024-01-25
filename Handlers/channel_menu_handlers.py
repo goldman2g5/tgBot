@@ -300,11 +300,11 @@ async def create_promo_post_menu(channel_id, channel_name, state: FSMContext):
 
     async with state.proxy() as data:
         if 'promo_post_time' not in data:
-            channel_data = getChannelById(channel_id)
+            channel_data = get_channel_by_id(channel_id)
             data['promo_post_time'] = channel_data.get('promoPostTime') or '10:00:00'
 
         if 'promo_post_interval' not in data:
-            channel_data = channel_data if 'channel_data' in locals() else getChannelById(channel_id)
+            channel_data = channel_data if 'channel_data' in locals() else get_channel_by_id(channel_id)
             data['promo_post_interval'] = channel_data.get('promoPostInterval') or 7
 
         current_time = data['promo_post_time']

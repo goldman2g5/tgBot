@@ -3,7 +3,7 @@ from aiogram.dispatcher.filters import Command
 import aiohttp
 import datetime
 
-from api import API_URL, is_user_admin, is_user_support, close_report
+from api import API_URL, is_user_admin, is_user_support, hide_channel, send_to_admins
 from bot import dp
 
 
@@ -31,7 +31,7 @@ async def open_support(callback: types.CallbackQuery):
 async def support_channels(callback: types.CallbackQuery):
     await callback.answer()
     async with aiohttp.ClientSession() as session:
-        async with session.get(f'{API_URL}/Admin/Reports/{callback.from_user.id}', ssl=False) as response:
+        async with session.get(f'{API_URL}/Report/ActiveReports/{callback.from_user.id}', ssl=False) as response:
             if response.status == 200:
                 channels = await response.json()
             else:
@@ -53,7 +53,7 @@ async def support_channel_reports(callback: types.CallbackQuery):
     await callback.answer()
     channel_id = int(callback.data.split(':')[3])
     async with aiohttp.ClientSession() as session:
-        async with session.get(f'{API_URL}/Admin/Reports/{callback.from_user.id}', ssl=False) as response:
+        async with session.get(f'{API_URL}/Report/ActiveReports/{callback.from_user.id}', ssl=False) as response:
             if response.status == 200:
                 channels = await response.json()
             else:
@@ -83,7 +83,7 @@ async def support_channel_report(callback: types.CallbackQuery):
     channel_id = int(callback.data.split(':')[3])
     report_id = int(callback.data.split(':')[4])
     async with aiohttp.ClientSession() as session:
-        async with session.get(f'{API_URL}/Admin/Reports/{callback.from_user.id}', ssl=False) as response:
+        async with session.get(f'{API_URL}/Report/ActiveReports/{callback.from_user.id}', ssl=False) as response:
             if response.status == 200:
                 channels = await response.json()
             else:
@@ -124,7 +124,7 @@ async def support_channel_report_hide(callback: types.CallbackQuery):
     report_id = int(callback.data.split(':')[4])
 
     async with aiohttp.ClientSession() as session:
-        async with session.get(f'{API_URL}/Admin/Reports/{callback.from_user.id}', ssl=False) as response:
+        async with session.get(f'{API_URL}/Report/ActiveReports/{callback.from_user.id}', ssl=False) as response:
             if response.status == 200:
                 channels = await response.json()
             else:
@@ -155,8 +155,7 @@ async def support_channel_report_hide_confirm(callback: types.CallbackQuery):
     channel_id = int(callback.data.split(':')[3])
     report_id = int(callback.data.split(':')[4])
 
-    resp = await close_report(report_id, callback.from_user.id, 1)
-    print(resp)
+    resp = await hide_channel(report_id, callback.from_user.id)
 
     await callback.answer('Channel hidden!', show_alert=True)
 
@@ -183,7 +182,7 @@ async def support_channel_report_hide_confirm(callback: types.CallbackQuery):
     channel_id = int(callback.data.split(':')[3])
     report_id = int(callback.data.split(':')[4])
 
-    # api.send_to_admins(channel_id, report_id)
+    await send_to_admins(callback.from_user.id, report_id)
 
     await callback.answer('Report was sent to Admins!', show_alert=True)
 
