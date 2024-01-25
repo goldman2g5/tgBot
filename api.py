@@ -4,8 +4,8 @@ from typing import List, Optional
 import aiohttp
 import requests
 
-# API_URL = "http://localhost:7256/api"
-API_URL = "https://tgsearch.info:1488/api"
+API_URL = "http://localhost:7256/api"
+# API_URL = "https://tgsearch.info:1488/api"
 API_KEY = "7bdf1ca44d84484c9864c06c0aedc1beb740909b02e4404ebafd381db897e1a5387567f8b42f47c7b5192eac60547460e0003c11fd804d1a966a30eacd939a3acaa9a352797f436aad6cd14f27517554"
 Verify_value = False
 
