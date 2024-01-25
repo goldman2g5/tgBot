@@ -558,6 +558,7 @@ async def process_subscription_button(callback_query: types.CallbackQuery):
     await callback_query.answer()
     channel_id = int(callback_query.data.split("_")[1])
     channel_name = callback_query.data.split("_")[2]
+    channel_link = await get_channel_url_by_id(channel_id)
 
     # Retrieve subscription data from the API
     subscriptions = get_subscriptions_from_api()
@@ -581,12 +582,12 @@ async def process_subscription_button(callback_query: types.CallbackQuery):
                 break
 
         if not channel_subscription:
-            msg_text = "<b>Подписка не оформлена</b>"
+            msg_text = f"Меню канала: {channel_link}\n<b>Подписка не оформлена</b>"
         else:
             sub_type = channel_subscription['subscriptionTypeName']
             sub_untill = datetime.strptime(channel_subscription['expirationDate'], '%Y-%m-%dT%H:%M:%S.%f')
             sub_untill_formated = sub_untill.strftime('%d.%m.%Y')
-            msg_text = f"Подписка <b>{sub_type}</b> активна до <b>{sub_untill_formated}</b>"
+            msg_text = f"Меню канала: {channel_link}\nПодписка <b>{sub_type}</b> активна до <b>{sub_untill_formated}</b>"
 
         file = InputFile('subscription_image.png')
         image = InputMediaPhoto(file)
