@@ -7,7 +7,6 @@ from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ContentTyp
 from api import get_channel_url_by_id
 from bot import dp
 from misc import create_notifications_menu
-from socket_service import *
 
 
 @dp.callback_query_handler(lambda c: c.data.startswith("channel_"))
