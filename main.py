@@ -1,23 +1,17 @@
 import asyncio
-import logging
 
 from aiogram import Dispatcher
-from aiogram.types import BotCommand, BotCommandScopeAllPrivateChats
+from aiogram.types import BotCommand
 
-from Handlers_new.new_channel_handlers import *
-from Handlers.channel_menu_handlers import *
 from Handlers.menu_handlers import *
 
-from Handlers_new.notifications_settings import *
-from Handlers_new.admin_handlers import *
-from Handlers_new.support_handlers import *
 from Handlers_new.autopost_handlers import *
 
 
 from aiogram.utils import executor
 from notification_service import start_notification_service
 from bot import dp, pyro_client, bot
-from socket_service import *
+from Websocket.socket_service import *
 
 from throthling_middleware import ThrottlingMiddleware
 
