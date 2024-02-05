@@ -1,3 +1,4 @@
+import asyncio
 import json
 import logging
 from typing import List, Optional
@@ -5,7 +6,7 @@ import aiohttp
 import requests
 
 # API_URL = "http://localhost:7256/api"
-API_URL = "https://tgsearch.info:1488/api"
+API_URL = "https://tgsearch.info:8443/api"
 API_KEY = "7bdf1ca44d84484c9864c06c0aedc1beb740909b02e4404ebafd381db897e1a5387567f8b42f47c7b5192eac60547460e0003c11fd804d1a966a30eacd939a3acaa9a352797f436aad6cd14f27517554"
 Verify_value = False
 
@@ -419,6 +420,16 @@ async def get_user_notifications_settings(telegram_id: int) -> Optional[dict]:
                 return await response.json()
             else:
                 return None
+
+
+async def channel_exists(channel_url: str) -> bool:
+    endpoint = f'{API_URL}/Channel/ExistsByUrl?url={channel_url}'
+    async with aiohttp.ClientSession(headers=default_headers) as session:
+        async with session.get(endpoint) as response:
+            if response.status == 200:
+                return await response.json()
+            else:
+                raise Exception("Error")
 
 
 async def set_user_notifications_settings(telegram_id: int, settings: dict) -> bool:
