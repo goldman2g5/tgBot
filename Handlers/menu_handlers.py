@@ -47,6 +47,10 @@ async def handle_payment(user_id, payment_data):
 
 @dp.message_handler(Command("start"))
 async def cmd_start(message: types.Message, state: FSMContext):
+    try:
+        await message.delete_reply_markup()
+    except:
+        pass
     username = message.from_user.username
     user_id = message.from_user.id
     args = message.get_args()

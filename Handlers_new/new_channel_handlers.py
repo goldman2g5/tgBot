@@ -5,8 +5,9 @@ import io
 from aiogram import types
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters.state import StatesGroup, State
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
-from api import get_user_id_from_database, save_channel_information, save_channel_access
+from api import get_user_id_from_database, save_channel_information, save_channel_access, channel_exists
 from bot import dp, bot
 
 
@@ -85,7 +86,7 @@ async def add_channel_link(callback: types.CallbackQuery, state: FSMContext):
     keyboard.add(types.KeyboardButton("Отмена"))
 
     await callback.message.delete()
-    msg = await callback.message.answer("<b>Нажмите на кнопку ниже и выберите канал, который хотите добавить.</b>",
+    msg = await callback.message.answer("<b>Нажмите на кнопку ниже и выберите канал, который хотите добавить.</b>\n\n<i>если канал не отображается, начните вводить его название, либо перейдите в приложение, если вы используете телеграм в браузере</i>",
                                         reply_markup=keyboard)
 
     await state.update_data(msgs_to_delete=[msg.message_id])
@@ -93,24 +94,37 @@ async def add_channel_link(callback: types.CallbackQuery, state: FSMContext):
 
 @dp.message_handler(state=ChannelCreationStates.waiting_for_channel, content_types=types.ContentTypes.CHAT_SHARED)
 async def test(message: types.Message, state: FSMContext):
-    await ChannelCreationStates.waiting_for_bot_in_channel.set()
     async with state.proxy() as data:
         msgs_to_delete = data['msgs_to_delete']
     for msg_id in msgs_to_delete:
         await bot.delete_message(message.chat.id, msg_id)
 
     channel_id = message.chat_shared['chat_id']
+    channel = await bot.get_chat(channel_id)
+    url = await channel.get_url()
 
-    async with state.proxy() as data:
-        data['channel_id'] = channel_id
+    if await channel_exists(url):
+        markup = InlineKeyboardMarkup(row_width=1)
+        # TODO: translate
+        markup.add(InlineKeyboardButton("Добавить канал", callback_data="add_channel"),
+                   InlineKeyboardButton("Управление каналами", callback_data="manage_channels"),
+                   InlineKeyboardButton("Настройка уведомлений", callback_data="xxx_notifications_settings"))
+        await message.answer("Канал уже добавлен на площадку, добавте другой канал.", reply_markup=markup)
+        await state.finish()
+    else:
 
-    keyboard = types.InlineKeyboardMarkup()
-    keyboard.add(types.InlineKeyboardButton('Проверить', callback_data='check_bot_in_channel'))
-    keyboard.add(types.InlineKeyboardButton('Отмена', callback_data='cancel_adding_channel'))
+        await ChannelCreationStates.waiting_for_bot_in_channel.set()
 
-    await message.answer(
-        f'<b>Чтобы добавить канал на сервис, вам нужно пригласить бота в канал</b>',
-        reply_markup=keyboard)
+        async with state.proxy() as data:
+            data['channel_id'] = channel_id
+
+        keyboard = types.InlineKeyboardMarkup()
+        keyboard.add(types.InlineKeyboardButton('Проверить', callback_data='check_bot_in_channel'))
+        keyboard.add(types.InlineKeyboardButton('Отмена', callback_data='cancel_adding_channel'))
+
+        await message.answer(
+            f'<b>Чтобы добавить канал на сервис, вам нужно пригласить бота в канал</b>',
+            reply_markup=keyboard)
 
 
 @dp.callback_query_handler(state=ChannelCreationStates.waiting_for_bot_in_channel)
@@ -170,7 +184,7 @@ async def add_channel_region(callback: types.CallbackQuery, state: FSMContext):
     channel_region = callback.data
     channel_name = channel.title
     user_id = callback.from_user.id
-    channel_url = (await channel.create_invite_link())['invite_link']
+    channel_url = (await channel.get_url())
     members_count = await channel.get_members_count()
     avatar = await get_channel_avatar(channel)
 

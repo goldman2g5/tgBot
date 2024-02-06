@@ -1,11 +1,12 @@
+import asyncio
 import json
 import logging
 from typing import List, Optional
 import aiohttp
 import requests
 
-#API_URL = "http://localhost:7256/api"
-API_URL = "https://tgsearch.info:1488/api"
+# API_URL = "http://localhost:7256/api"
+API_URL = "https://tgsearch.info:8443/api"
 API_KEY = "7bdf1ca44d84484c9864c06c0aedc1beb740909b02e4404ebafd381db897e1a5387567f8b42f47c7b5192eac60547460e0003c11fd804d1a966a30eacd939a3acaa9a352797f436aad6cd14f27517554"
 Verify_value = False
 
@@ -236,8 +237,17 @@ def get_subscriptions_from_api():
         return None
 
 
+async def get_user_subscriptions_data(user_id):
+    async with aiohttp.ClientSession(headers=default_headers) as session:
+        async with session.get(f'{API_URL}/User/ActiveSubscriptions/{user_id}') as response:
+            if response.status == 200:
+                return await response.json()
+            else:
+                return None
+
+
 def get_channel_tag_limit(channel_id):
-    channel = getChannelById(channel_id)
+    channel = get_channel_by_id(channel_id)
     if channel is None:
         logger.error(f"Failed to get channel details for ID: {channel_id}")
         return None
@@ -355,8 +365,15 @@ async def is_user_support(telegram_id):
     return True
 
 
-async def close_report(report_id: int, telegram_id: int, status: int):
-    endpoint = f'{API_URL}/Admin/CloseReport/{report_id}/{telegram_id}/{status}'
+async def hide_channel(report_id: int, telegram_id: int):
+    endpoint = f'{API_URL}/Report/HideChannelByReport/{telegram_id}/{report_id}'
+    async with aiohttp.ClientSession(headers=default_headers) as session:
+        async with session.post(endpoint) as response:
+            return response
+
+
+async def send_to_admins(user_id: int, report_id: int):
+    endpoint = f'{API_URL}/Report/MarkReportUnresolved/{user_id}/{report_id}'
     async with aiohttp.ClientSession(headers=default_headers) as session:
         async with session.post(endpoint) as response:
             return response
@@ -405,6 +422,16 @@ async def get_user_notifications_settings(telegram_id: int) -> Optional[dict]:
                 return None
 
 
+async def channel_exists(channel_url: str) -> bool:
+    endpoint = f'{API_URL}/Channel/ExistsByUrl?url={channel_url}'
+    async with aiohttp.ClientSession(headers=default_headers) as session:
+        async with session.get(endpoint) as response:
+            if response.status == 200:
+                return await response.json()
+            else:
+                raise Exception("Error")
+
+
 async def set_user_notifications_settings(telegram_id: int, settings: dict) -> bool:
     endpoint = f'{API_URL}/Notification/SetNotificationSettings/{telegram_id}'
     async with aiohttp.ClientSession() as session:
@@ -435,14 +462,13 @@ def updateChannelDetails(channel_id, promo_post_time, promo_post_interval):
         return False
 
 
-def getChannelById(channel_id):
-    try:
-        response = requests.get(f"{API_URL}/Channel/{channel_id}", verify=Verify_value, headers=default_headers)
-        print(response)
-        response.raise_for_status()
-        return response.json()
-    except requests.RequestException:
-        return None
+async def get_channel_by_id(channel_id: int) -> Optional[dict]:
+    async with aiohttp.ClientSession(headers=default_headers) as session:
+        async with session.get(f"{API_URL}/Channel/{channel_id}") as response:
+            if response.status == 200:
+                return await response.json()
+            else:
+                return None
 
 
 async def get_channel_url_by_id(channel_id):
@@ -487,6 +513,7 @@ def create_ad_post(data: dict):
     url = f'{API_URL}/'
     requests.post(url, json=json_data, headers=default_headers)
 
+
 # async def get_user_notifications(telegram_id):
 #     """
 #     Function to get the notification settings for a specific user by their Telegram ID.
@@ -514,3 +541,11 @@ def create_ad_post(data: dict):
 #     async with aiohttp.ClientSession() as session:
 #         async with session.post(url, json=notification_settings,  headers=default_headers) as response:
 #             return response.status == 200
+async def get_hidden_channels(user_id: int) -> Optional[List[dict]]:
+    async with aiohttp.ClientSession(headers=default_headers) as session:
+        async with session.get(f'{API_URL}/Report/HiddenReports/{user_id}') as response:
+            if response.status == 200:
+                return
+                return channels
+            else:
+                return None
