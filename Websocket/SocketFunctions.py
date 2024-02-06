@@ -217,15 +217,24 @@ async def get_messages_from_past_days(chat_id, number_of_days, batch_size=500, m
     return all_messages
 
 
-async def calculate_daily_views(messages):
+async def calculate_daily_views(messages, number_of_days):
+    # Initialize daily_views with all dates for the specified number of days
     daily_views = defaultdict(lambda: {"views": 0, "last_message_id": None})
+    start_date = datetime.utcnow().date() - timedelta(days=number_of_days - 1)
+
+    # Populate daily_views with all dates in the range
+    for day in range(number_of_days):
+        current_date = (start_date + timedelta(days=day)).isoformat()
+        daily_views[current_date]  # Initializes the entry
+
+    # Populate views and last_message_id based on messages
     for message in messages:
-        if hasattr(message, 'views') and message.views and message.date:
-            # Ensure message.date is used as a datetime object throughout
-            message_date = message.date.date()  # Extracting only the date part
-            view_count = message.views
-            daily_views[message_date.isoformat()]["views"] += view_count
-            daily_views[message_date.isoformat()]["last_message_id"] = message.id
+        if hasattr(message, 'views') and message.views and hasattr(message, 'date'):
+            message_date = message.date.date().isoformat()
+            if message_date in daily_views:  # Ensure the message date is within the range
+                daily_views[message_date]["views"] += message.views
+                daily_views[message_date]["last_message_id"] = message.id
+
     return daily_views
 
 
@@ -236,7 +245,7 @@ async def get_daily_views_by_channel(channel_name, number_of_days, offset_date=N
 
         # Pass the offset_date to the get_messages_from_past_days function
         messages = await get_messages_from_past_days(chat_id, number_of_days, start_date=offset_date)
-        views_by_day = await calculate_daily_views(messages)
+        views_by_day = await calculate_daily_views(messages, number_of_days)
 
         # Creating a list of dictionaries for each day
         daily_stats = [
