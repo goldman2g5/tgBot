@@ -6,7 +6,8 @@ from aiogram import types
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters.state import StatesGroup, State
 
-from api import get_user_id_from_database, save_channel_information, save_channel_access
+from api import get_user_id_from_database, save_channel_information, save_channel_access, channel_exists, \
+    get_channel_by_id
 from bot import dp, bot
 
 
@@ -93,6 +94,7 @@ async def add_channel_link(callback: types.CallbackQuery, state: FSMContext):
 
 @dp.message_handler(state=ChannelCreationStates.waiting_for_channel, content_types=types.ContentTypes.CHAT_SHARED)
 async def test(message: types.Message, state: FSMContext):
+
     await ChannelCreationStates.waiting_for_bot_in_channel.set()
     async with state.proxy() as data:
         msgs_to_delete = data['msgs_to_delete']
@@ -120,6 +122,9 @@ async def check_bot_in_channel(callback: types.CallbackQuery, state: FSMContext)
 
     status = await bot_status(channel_id)
     if status == 'admin':
+        if await channel_exists(await (await bot.get_chat(channel_id)).get_url()):
+            await callback.answer('Канал уже существует на сервисе, добавте другой.')
+            return
         await ChannelCreationStates.waiting_for_description.set()
 
         keyboard = types.InlineKeyboardMarkup()
@@ -170,7 +175,7 @@ async def add_channel_region(callback: types.CallbackQuery, state: FSMContext):
     channel_region = callback.data
     channel_name = channel.title
     user_id = callback.from_user.id
-    channel_url = (await channel.create_invite_link())['invite_link']
+    channel_url = await channel.get_url()
     members_count = await channel.get_members_count()
     avatar = await get_channel_avatar(channel)
 

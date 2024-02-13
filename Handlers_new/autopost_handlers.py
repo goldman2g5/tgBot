@@ -36,7 +36,7 @@ async def autopost_instant_confirm(call: types.CallbackQuery):
         types.InlineKeyboardButton("Уведомления", callback_data=f"notifications_{channel_id}_{channel_name}"),
         types.InlineKeyboardButton("Автопост", callback_data=f"autopost_{channel_id}_{channel_name}"),
         types.InlineKeyboardButton("Настройки", callback_data=f"customization_{channel_id}_{channel_name}"),
-        types.InlineKeyboardButton("Создать пост", callback_data=f"create_post_{channel_id}_{channel_name}"),
+        # types.InlineKeyboardButton("Создать пост", callback_data=f"create_post_{channel_id}_{channel_name}"),
         types.InlineKeyboardButton("Назад", callback_data="manage_channels")
     )
 
@@ -65,7 +65,7 @@ async def autopost(call: types.CallbackQuery):
     channel_name = call.data.split("_")[2]
     channel_link = await get_channel_url_by_id(channel_id)
 
-    msg_text = f"Настройка Автопоста для канала @{channel_link}\n" \
+    msg_text = f"Настройка Автопоста для канала {channel_link}\n" \
                "Автопост даёт дополнительные очки рейтинга раз в 1 день, а также возможность бампать у подписчиков канала\n" \
                "Пост выглядит так:"
 
