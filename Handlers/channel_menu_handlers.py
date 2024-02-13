@@ -4,9 +4,12 @@ from aiogram.dispatcher.filters.state import StatesGroup, State
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ContentType, InputMediaPhoto, \
     InputFile
 
-from api import get_channel_url_by_id
+from datetime import datetime, timedelta
+
+from api import get_channel_url_by_id, get_user_subscriptions_data
 from bot import dp
 from misc import create_notifications_menu
+from socket_service import *
 
 
 @dp.callback_query_handler(lambda c: c.data.startswith("channel_"))
@@ -297,11 +300,11 @@ async def create_promo_post_menu(channel_id, channel_name, state: FSMContext):
 
     async with state.proxy() as data:
         if 'promo_post_time' not in data:
-            channel_data = getChannelById(channel_id)
+            channel_data = get_channel_by_id(channel_id)
             data['promo_post_time'] = channel_data.get('promoPostTime') or '10:00:00'
 
         if 'promo_post_interval' not in data:
-            channel_data = channel_data if 'channel_data' in locals() else getChannelById(channel_id)
+            channel_data = channel_data if 'channel_data' in locals() else get_channel_by_id(channel_id)
             data['promo_post_interval'] = channel_data.get('promoPostInterval') or 7
 
         current_time = data['promo_post_time']
@@ -555,6 +558,7 @@ async def process_subscription_button(callback_query: types.CallbackQuery):
     await callback_query.answer()
     channel_id = int(callback_query.data.split("_")[1])
     channel_name = callback_query.data.split("_")[2]
+    channel_link = await get_channel_url_by_id(channel_id)
 
     # Retrieve subscription data from the API
     subscriptions = get_subscriptions_from_api()
@@ -570,11 +574,26 @@ async def process_subscription_button(callback_query: types.CallbackQuery):
             InlineKeyboardButton("Назад", callback_data=f"channel_{channel_id}_{channel_name}_respawn")
         )
 
+        user_subscriptions = await get_user_subscriptions_data(callback_query.from_user.id)
+        channel_subscription = None
+        for user_subscription in user_subscriptions:
+            if user_subscription['channelId'] == channel_id:
+                channel_subscription = user_subscription
+                break
+
+        if not channel_subscription:
+            msg_text = f"Меню канала: {channel_link}\n<b>Подписка не оформлена</b>"
+        else:
+            sub_type = channel_subscription['subscriptionTypeName']
+            sub_untill = datetime.strptime(channel_subscription['expirationDate'], '%Y-%m-%dT%H:%M:%S.%f')
+            sub_untill_formated = sub_untill.strftime('%d.%m.%Y')
+            msg_text = f"Меню канала: {channel_link}\nПодписка <b>{sub_type}</b> активна до <b>{sub_untill_formated}</b>"
+
         file = InputFile('subscription_image.png')
-        image = InputMediaPhoto(file, 'zxczxc')
+        image = InputMediaPhoto(file)
         if callback_query.message.reply_markup:
             # Edit the existing message with the updated inline keyboard
-            await callback_query.message.answer_photo(file, caption='zxczxc', reply_markup=markup)
+            await callback_query.message.answer_photo(file, caption=msg_text, reply_markup=markup)
             await callback_query.message.delete()
             await callback_query.message.edit_media(image, reply_markup=markup)
         else:
