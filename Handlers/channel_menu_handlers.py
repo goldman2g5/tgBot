@@ -6,7 +6,7 @@ from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ContentTyp
 
 from datetime import datetime, timedelta
 
-from api import get_channel_url_by_id, get_user_subscriptions_data
+from api import get_channel_url_by_id
 from bot import dp
 from misc import create_notifications_menu
 from socket_service import *
@@ -28,7 +28,7 @@ async def channel_menu_handler(callback_query: types.CallbackQuery):
         InlineKeyboardButton("Уведомления", callback_data=f"notifications_{channel_id}_{channel_name}"),
         InlineKeyboardButton("Автопост", callback_data=f"autopost_{channel_id}_{channel_name}"),
         InlineKeyboardButton("Настройки", callback_data=f"customization_{channel_id}_{channel_name}"),
-        InlineKeyboardButton("Создать пост", callback_data=f"create_post_{channel_id}_{channel_name}"),
+        # InlineKeyboardButton("Создать пост", callback_data=f"create_post_{channel_id}_{channel_name}"),
         InlineKeyboardButton("Назад", callback_data="manage_channels")
     )
 
@@ -154,6 +154,7 @@ async def edit_language_handler(callback_query: types.CallbackQuery, state: FSMC
     await callback_query.answer()
     channel_id = int(callback_query.data.split("_")[2])
     channel_name = callback_query.data.split("_")[3]
+    channel_link = await get_channel_url_by_id(channel_id)
 
     markup = InlineKeyboardMarkup(row_width=1).add(
         InlineKeyboardButton("RU", callback_data=f"language_ru_{channel_id}_{channel_name}"),
@@ -165,7 +166,7 @@ async def edit_language_handler(callback_query: types.CallbackQuery, state: FSMC
     await bot.edit_message_text(
         chat_id=callback_query.message.chat.id,
         message_id=callback_query.message.message_id,
-        text=f"Настройки региона для: {channel_name}",
+        text=f"Настройки региона для: {channel_link}",
         reply_markup=markup
     )
 
@@ -416,7 +417,7 @@ async def tags_handler(callback_query: types.CallbackQuery, state: FSMContext):
     channel_name = callback_query.data.split("_")[2]
     callback_arguments = callback_query.data.split("_")
 
-    tag_limit = get_channel_tag_limit(channel_id)
+    tag_limit = await get_channel_tag_limit(channel_id)
     print(f"Tag limit for channel ID {channel_id}: {tag_limit}")
 
     if len(callback_arguments) > 3:
