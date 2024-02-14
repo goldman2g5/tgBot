@@ -19,6 +19,7 @@ api_hash_secret = SecretStr(config['bot']['API_HASH'])
 bot_token = config['bot']['BOT_TOKEN']
 bot_token_secret = SecretStr(config['bot']['BOT_TOKEN'])
 PHONE_NUMBER = config['bot']['PHONE_NUMBER']
+YCASSATOKEN = "381764678:TEST:78133"
 
 pyro_client = pyroClient(
     "my_account",

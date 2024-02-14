@@ -7,7 +7,7 @@ from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ContentTyp
 from datetime import datetime, timedelta
 
 from api import get_channel_url_by_id
-from bot import dp
+from bot import dp, YCASSATOKEN
 from misc import create_notifications_menu
 from Websocket.socket_service import *
 
@@ -603,10 +603,6 @@ async def process_subscription_button(callback_query: types.CallbackQuery):
     else:
         # Handle error if API request fails
         await callback_query.answer("Failed to retrieve subscription data from the API.")
-
-
-YCASSATOKEN = "381764678:TEST:59527"
-
 
 @dp.callback_query_handler(lambda c: c.data.startswith("subscriptionchoice_"))
 async def process_subscription_choice(callback_query: types.CallbackQuery, state: FSMContext):
