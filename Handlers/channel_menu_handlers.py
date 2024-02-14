@@ -26,7 +26,7 @@ async def channel_menu_handler(callback_query: types.CallbackQuery):
         InlineKeyboardButton("Подписки", callback_data=f"subscription_{channel_id}_{channel_name}"),
         # TODO: notifications api
         InlineKeyboardButton("Уведомления", callback_data=f"notifications_{channel_id}_{channel_name}"),
-        InlineKeyboardButton("Автопост", callback_data=f"autopost_{channel_id}_{channel_name}"),
+        InlineKeyboardButton("Рекламный пост", callback_data=f"autopost_{channel_id}_{channel_name}"),
         InlineKeyboardButton("Настройки", callback_data=f"customization_{channel_id}_{channel_name}"),
         # InlineKeyboardButton("Создать пост", callback_data=f"create_post_{channel_id}_{channel_name}"),
         InlineKeyboardButton("Назад", callback_data="manage_channels")
@@ -729,6 +729,13 @@ async def process_bump_button(callback_query: types.CallbackQuery):
     if response is not None:
         if response.status_code == 204:
             await callback_query.answer("Канал успешно продвинут.\nСледующий бамп через 03:59:59.", show_alert=True)
+            if callback_query.message.chat.type == "channel":
+                text = '🔎 <a href="https://tgsearch.info/">tgsearch.info</a>\n\n' \
+                       "<b>・Помоги любимому каналу в продвижении на лучшем телеграмм мониторинге! Нажми на кнопку как только она станет доступна!</b>\n" \
+                       f"<b>・Последний кто вовремя нажал — {callback_query.from_user.mention}</b>"
+                bump_keyboard = types.InlineKeyboardMarkup()
+                bump_keyboard.add(types.InlineKeyboardButton('Бамп', callback_data=f'bump_{channel_id}'))
+                await callback_query.message.edit_text(text, reply_markup=bump_keyboard)
         elif response.status_code == 400:
             time_left = response.headers.get("X-TimeLeft")
             if time_left:
