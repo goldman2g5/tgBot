@@ -743,7 +743,7 @@ async def process_bump_button(callback_query: types.CallbackQuery):
                 duration = timedelta(seconds=time_left)
                 hours = duration.seconds // 3600
                 minutes = (duration.seconds // 60) % 60
-                time_left_str = f"{hours} часов {minutes} минут"
+                time_left_str = f"{hours} часа {minutes} минут"
                 await callback_query.answer(f"Продвижение канала будет доступно через {time_left_str}.",
                                             show_alert=True)
             else:
