@@ -12,7 +12,6 @@ async def pass_(call: types.CallbackQuery):
 
 @dp.callback_query_handler(lambda c: c.data.startswith('autopost:instant:confirm'))
 async def autopost_instant_confirm(call: types.CallbackQuery):
-    print("x")
     channel_id = int(call.data.split("_")[1])
     channel_name = call.data.split("_")[2]
     channel_link = await get_channel_url_by_id(channel_id)
