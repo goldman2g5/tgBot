@@ -7,9 +7,10 @@ from bot import dp
 
 @dp.callback_query_handler(lambda c: c.data == "xxx_notifications_settings")
 async def notifications_settings_handler(callback_query: types.CallbackQuery, state: FSMContext):
+    await callback_query.answer()
 
     user_settings = await get_user_notifications_settings(callback_query.from_user.id)
-    translation = {'general': "Общие", 'bump': "Бампы", 'important': "Важные"}
+    translation = {'bump': "Бампы", 'important': "Важные"}
 
     keyboard = types.InlineKeyboardMarkup(row_width=1)
     for setting in user_settings:
@@ -17,7 +18,6 @@ async def notifications_settings_handler(callback_query: types.CallbackQuery, st
             keyboard.add(types.InlineKeyboardButton(f"{translation[setting]}: ✅", callback_data=f"toggle_{setting}"))
         else:
             keyboard.add(types.InlineKeyboardButton(f"{translation[setting]}: ❌", callback_data=f"toggle_{setting}"))
-    await callback_query.answer()
 
     keyboard.add(types.InlineKeyboardButton("В главное меню", callback_data="back_to_menu"))
 
@@ -26,19 +26,17 @@ async def notifications_settings_handler(callback_query: types.CallbackQuery, st
 
 @dp.callback_query_handler(lambda c: c.data.startswith("toggle_"))
 async def toggle_notifications_setting_handler(callback_query: types.CallbackQuery, state: FSMContext):
+    await callback_query.answer()
 
     setting = callback_query.data.split("_")[1]
 
     user_settings = await get_user_notifications_settings(callback_query.from_user.id)
-
     user_settings[setting] = not user_settings[setting]
-
-    settings_json = {"bump": user_settings["bump"], "general": user_settings["general"], "important": user_settings["important"]}
-
+    settings_json = {"bump": user_settings["bump"], "important": user_settings["important"]}
     await set_user_notifications_settings(callback_query.from_user.id, settings_json)
     user_settings = await get_user_notifications_settings(callback_query.from_user.id)
 
-    translation = {'general': "Общие", 'bump': "Бампы", 'important': "Важные"}
+    translation = {'bump': "Бампы", 'important': "Важные"}
 
     keyboard = types.InlineKeyboardMarkup(row_width=1)
     for setting in user_settings:
@@ -46,7 +44,6 @@ async def toggle_notifications_setting_handler(callback_query: types.CallbackQue
             keyboard.add(types.InlineKeyboardButton(f"{translation[setting]}: ✅", callback_data=f"toggle_{setting}"))
         else:
             keyboard.add(types.InlineKeyboardButton(f"{translation[setting]}: ❌", callback_data=f"toggle_{setting}"))
-    await callback_query.answer()
 
     keyboard.add(types.InlineKeyboardButton("В главное меню", callback_data="back_to_menu"))
 

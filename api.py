@@ -478,7 +478,7 @@ async def get_channel_url_by_id(channel_id):
                 url: str = (await response.json())['url']
                 if url.startswith('https://t.me/+'):
                     name = (await response.json())['name']
-                    return f'<a href="{url}">{name}</a>'
+                    return f'<a href="{url}">@{name}</a>'
                 else:
                     return '@' + url.split('https://t.me/')[1]
             else:
