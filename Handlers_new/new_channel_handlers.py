@@ -143,6 +143,7 @@ async def check_bot_in_channel(callback: types.CallbackQuery, state: FSMContext)
 @dp.message_handler(state=ChannelCreationStates.waiting_for_description)
 async def add_channel_description(message: types.Message, state: FSMContext):
     await ChannelCreationStates.waiting_for_region.set()
+    await message.delete()
 
     async with state.proxy() as data:
         data['description'] = message.text
