@@ -12,6 +12,7 @@ from Handlers_new.notifications_settings import *
 from Handlers_new.admin_handlers import *
 from Handlers_new.support_handlers import *
 from Handlers_new.autopost_handlers import *
+from Handlers_new.help_handler import *
 
 
 from aiogram.utils import executor

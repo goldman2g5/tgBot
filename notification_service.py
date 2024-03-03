@@ -32,7 +32,11 @@ async def send_sub_notification(notification):
     telegram_chat_id = notification['telegramChatId']
     channel_id = notification['channelId']
 
-    await bot.send_message(telegram_chat_id, f"Your subscription for {channel_name} has expired!")
+    keyboard = types.InlineKeyboardMarkup()
+    keyboard.add(types.InlineKeyboardButton(text="Продлить", callback_data=f"subscription_{channel_id}_{channel_name}"))
+    keyboard.add(types.InlineKeyboardButton(text="Не хочу продлевать :(", callback_data="dont_resume"))
+
+    await bot.send_message(telegram_chat_id, f"Ваша подписка для канала {channel_name} закончилась!")
 
 
 async def send_promo_post_notification(notification):

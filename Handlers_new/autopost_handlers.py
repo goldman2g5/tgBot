@@ -32,7 +32,7 @@ async def autopost_instant_confirm(call: types.CallbackQuery):
     markup.add(
         types.InlineKeyboardButton("Бамп", callback_data=f"bump_{channel_id}"),
         types.InlineKeyboardButton("Подписки", callback_data=f"subscription_{channel_id}_{channel_name}"),
-        types.InlineKeyboardButton("Уведомления", callback_data=f"notifications_{channel_id}_{channel_name}"),
+        # types.InlineKeyboardButton("Уведомления", callback_data=f"notifications_{channel_id}_{channel_name}"),
         types.InlineKeyboardButton("Рекламный пост", callback_data=f"autopost_{channel_id}_{channel_name}"),
         types.InlineKeyboardButton("Настройки", callback_data=f"customization_{channel_id}_{channel_name}"),
         # types.InlineKeyboardButton("Создать пост", callback_data=f"create_post_{channel_id}_{channel_name}"),
