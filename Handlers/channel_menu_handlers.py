@@ -25,7 +25,7 @@ async def channel_menu_handler(callback_query: types.CallbackQuery):
         InlineKeyboardButton("Бамп", callback_data=f"bump_{channel_id}"),
         InlineKeyboardButton("Подписки", callback_data=f"subscription_{channel_id}_{channel_name}"),
         # TODO: notifications api
-        InlineKeyboardButton("Уведомления", callback_data=f"notifications_{channel_id}_{channel_name}"),
+        # InlineKeyboardButton("Уведомления", callback_data=f"notifications_{channel_id}_{channel_name}"),
         InlineKeyboardButton("Рекламный пост", callback_data=f"autopost_{channel_id}_{channel_name}"),
         InlineKeyboardButton("Настройки", callback_data=f"customization_{channel_id}_{channel_name}"),
         # InlineKeyboardButton("Создать пост", callback_data=f"create_post_{channel_id}_{channel_name}"),
@@ -754,3 +754,8 @@ async def process_bump_button(callback_query: types.CallbackQuery):
         # Wait for 30 seconds before deleting the message
         await asyncio.sleep(10)
         await bot.delete_message(callback_query.message.chat.id, callback_query.message.message_id)
+
+
+@dp.callback_query_handler(lambda c: c.data == "dont_resume")
+async def dasasdasdsad(call: types.CallbackQuery):
+    await call.message.delete()

@@ -221,5 +221,5 @@ async def add_channel_region(callback: types.CallbackQuery, state: FSMContext):
     Спасибо, что воспользовались нашим сервисом!\nДля того, чтобы <b>удерживать свой канал в топе</b>, нажимайте кнопку бамп в личном кабинете каждые 4 часа!\n\n<i>Рейтинговая система обнуляется 15го числа каждого месяца</i>
     """
     bump_keyboard = types.InlineKeyboardMarkup()
-    bump_keyboard.add(types.InlineKeyboardButton('Бамп', callback_data=f'bump_{channel_id}'))
+    bump_keyboard.add(types.InlineKeyboardButton('Бамп', callback_data=f'bump_{channel_id}_delete'))
     await bot.send_message(callback.message.chat.id, text, reply_markup=bump_keyboard)
