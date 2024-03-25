@@ -136,7 +136,7 @@ async def connectToHub():
             ws_scheme = 'wss' if BASE_URL.startswith('https') else 'ws'
             uri = f"{ws_scheme}://{BASE_URL.split('://')[1]}/BotHub?id={connectionid}"
 
-            async with websockets.connect(uri) as websocket:
+            async with websockets.connect(uri, extra_headers=default_headers) as websocket:
                 await handshake(websocket)
 
                 if stream_id:

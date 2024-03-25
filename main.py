@@ -20,6 +20,7 @@ from bot import dp, pyro_client, bot
 from Websocket.socket_service import *
 
 from throthling_middleware import ThrottlingMiddleware
+from FastApi.FastApiEndpoints import app
 
 
 async def start_pyro_client():

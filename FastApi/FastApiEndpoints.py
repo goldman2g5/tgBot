@@ -1,9 +1,12 @@
 import json
+import logging
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, Depends
 from fastapi.encoders import jsonable_encoder
 from pydantic import BaseModel, ValidationError
 from typing import List, Optional
+from bot import pyro_client
+from Websocket.SocketFunctions import get_messages_from_past_days, calculate_daily_views
 
 from notification_service import *
 
@@ -50,8 +53,39 @@ async def send_notifications(notifications: List[NotificationModel]):
 
 @app.get("/")
 async def root():
-    # It's important to maintain professionalism and respect in user-facing messages.
-    return {"message": "Welcome to our notification service!"}
+    return {"message": "working fine"}
+
+
+class ChannelQuery(BaseModel):
+    ChannelId: int
+    NumberOfDays: int
+
+async def get_pyro_client():
+    # Initialize or ensure pyro_client is started
+    # This is just a placeholder. Adapt it to your actual pyro_client initialization logic.
+    if not pyro_client.is_connected:
+        await pyro_client.start()
+    return pyro_client
+
+@app.post("/get_daily_views/")
+async def get_daily_views(query: ChannelQuery, client=Depends(get_pyro_client)):
+    try:
+        chat = await client.get_chat(query.ChannelId)
+        chat_id = chat.id
+
+        messages = await get_messages_from_past_days(chat_id, query.NumberOfDays, start_date=None)
+        views_by_day = await calculate_daily_views(messages, query.NumberOfDays)
+
+        daily_stats = [
+            {"date": str(day), "views": data["views"], "lastMessageId": data["last_message_id"]}
+            for day, data in views_by_day.items()
+        ]
+
+        return json.loads(json.dumps(daily_stats))  # FastAPI will automatically convert dict to JSON
+
+    except Exception as e:
+        logging.error(f"An error occurred: {e}")
+        raise HTTPException(status_code=500, detail="An error occurred while processing your request.")
 
 
 async def send_notification(notification):
