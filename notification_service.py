@@ -22,9 +22,9 @@ async def send_bump_notification(notification):
     # Send the notification to the user using the bot
     markup = types.InlineKeyboardMarkup(row_width=1)
     markup.add(
-        types.InlineKeyboardButton("Bump", callback_data=f"bump_{channel_id}_delete"),
+        types.InlineKeyboardButton("Бамп", callback_data=f"bump_{channel_id}_delete"),
     )
-    await bot.send_message(telegram_chat_id, f"It's time to bump {channel_name}!", reply_markup=markup)
+    await bot.send_message(telegram_chat_id, f"Пришло время бамрнуть {channel_name}!", reply_markup=markup)
 
 
 async def send_sub_notification(notification):

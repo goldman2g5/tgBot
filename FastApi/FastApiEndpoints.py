@@ -100,14 +100,14 @@ async def send_notification(notification):
     # Determine the type of notification and customize the message and markup accordingly
     if notification_type == 'bump':
         button_text = "Bump"
-        message = f"It's time to bump {channel_name}!"
+        message = f"Пришло время бампнуть {channel_name}!"
         callback_data = f"bump_{channel_id}_delete"
     elif notification_type == 'subscription':
         button_text = None  # No button needed for subscription expiration
-        message = f"Your subscription for {channel_name} has expired!"
+        message = f"Подписка для {channel_name} истекла!"
     elif notification_type == 'promo':
         button_text = "Promo"
-        message = "It's time for a promotional post!"
+        message = "Пришло время для промо-поста!"
         callback_data = f"promo_{channel_id}_delete"
     else:
         print(f"Unsupported notification type: {notification_type}")
