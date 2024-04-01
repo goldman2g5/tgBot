@@ -12,7 +12,6 @@ logging.basicConfig(level=logging.INFO)
 
 config = configparser.ConfigParser()
 config.read('config.ini')
-
 API_ID = config['bot']['API_ID']
 API_HASH = config['bot']['API_HASH']
 api_hash_secret = SecretStr(config['bot']['API_HASH'])

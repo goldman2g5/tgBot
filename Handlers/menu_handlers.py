@@ -11,7 +11,7 @@ from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, LabeledPri
 from api import *
 from bot import dp, bot
 from misc import open_menu
-from states import AddChannelStates
+from states import AddChannelStates, VerificationStates
 from api import API_URL, default_headers
 
 
@@ -43,7 +43,6 @@ def bytes_to_base64(data: bytes) -> str:
 
 async def handle_payment(user_id, payment_data):
     pass
-
 
 @dp.message_handler(Command("start"))
 async def cmd_start(message: types.Message, state: FSMContext):

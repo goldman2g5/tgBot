@@ -12,3 +12,6 @@ class AddChannelStates(StatesGroup):
     waiting_for_flag_selection = State()
     waiting_for_description = State()
 
+
+class VerificationStates(StatesGroup):
+    waiting_for_code = State()

@@ -1,54 +1,101 @@
 import json
 import logging
+import time
+from typing import List
 
+from aiogram import types
 from aiogram.dispatcher import FSMContext
-from aiogram.dispatcher.filters.state import State, StatesGroup
-from fastapi import FastAPI, HTTPException, Request, Depends
-from fastapi.encoders import jsonable_encoder
-from pydantic import BaseModel, ValidationError
-from typing import List, Optional
-from bot import pyro_client
-from Websocket.SocketFunctions import get_messages_from_past_days, calculate_daily_views
+from aiogram.dispatcher.filters import Command
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
+from starlette.responses import JSONResponse
 
-from notification_service import *
+# from notification_service import *
+from bot import bot, dp
+from states import *
 
 # uvicorn main:app --reload
 
 app = FastAPI()
 
 
-class VerificationStates(StatesGroup):
-    waiting_for_code = State()
+def save_code(user_id: int, code: str):
+    try:
+        with open('codes.json', 'r+') as f:
+            codes = json.load(f)
+    except FileNotFoundError:
+        codes = {}
+    codes[str(user_id)] = code
+    with open('codes.json', 'w') as f:
+        json.dump(codes, f)
 
 
-verification_codes_storage = {}
+def get_code(user_id: int):
+    try:
+        with open('codes.json', 'r') as f:
+            codes = json.load(f)
+            return codes.pop(str(user_id), None), codes
+    except FileNotFoundError:
+        return None, {}
+
+
+def encode_number_to_letters(number):
+    """Encode a number to a string using a=1, b=2, ..., i=9, j=0."""
+    encoded = ""
+    for digit in str(number):
+        if digit == "0":
+            encoded += "j"  # 'j' represents 0
+        else:
+            encoded += chr(int(digit) + 96)  # 'a'=1,...,'i'=9
+    return encoded
+
+
+def decode_letters_to_number(encoded_string):
+    """Decode a string back to numbers using a=1, b=2, ..., i=9, j=0."""
+    decoded = ""
+    for char in encoded_string:
+        if char == "j":
+            decoded += "0"  # Convert 'j' back to 0
+        else:
+            decoded += str(ord(char) - 96)  # Reverse the encoding process for 1-9
+    return decoded
 
 
 @app.get("/get_verification_code/{user_id}")
 async def get_verification_code(user_id: int):
-    # Retrieve the verification code for the given user ID
-    verification_code = verification_codes_storage.get(user_id)
+    verification_code, remaining_codes = get_code(user_id)
     if verification_code:
-        # Optionally, remove the code from storage after retrieval if it should only be accessed once
-        del verification_codes_storage[user_id]
+        # Save the remaining codes after removal
+        with open('codes.json', 'w') as f:
+            json.dump(remaining_codes, f)
         return {"user_id": user_id, "verification_code": verification_code}
     else:
-        return {"error": "Verification code not found or has already been retrieved."}
+        raise HTTPException(status_code=404, detail="Verification code not found or has already been retrieved.")
 
 
-@dp.message_handler(state=VerificationStates.waiting_for_code)
-async def process_verification_code(message: types.Message, state: FSMContext):
-    # Store the received code in the temporary storage
-    verification_codes_storage[message.from_user.id] = message.text
-    await message.answer("Code received, thank you!")
-    await state.finish()
+@dp.message_handler(Command("authclient"))
+async def auth_client_command(message: types.Message):
+    # Your existing logic here
+
+    args = message.get_args().split()  # Assumes that the command format is "/authclient <code>"
+    if not args:
+        await message.answer("bebra bebra, `/authclient 4455`.")
+        return
+
+    verification_code = decode_letters_to_number(args[0])
+    print(verification_code)
+    # Assuming you have a mechanism to associate the code with a user/session:
+
+    save_code(int(message.from_user.id), verification_code)
+    print(f"auth_client_command {get_code(message.from_user.id)}")
+
+    # Process the verification code here. For example, store it, verify it, etc.
+    await message.answer(f"done")
 
 
 @app.post("/trigger_verification/{user_id}")
 async def trigger_verification(user_id: int):
-    user_state = dp.current_state(user=user_id, chat=user_id)
-    await user_state.set_state(VerificationStates.waiting_for_code.state)
-    await bot.send_message(user_id, "Please reply with your verification code.")
+    await bot.send_message(user_id, "a=1 b=2 c=3\nd=4 e=5 f=6\ng=7 h=8 i=9\nj=0\n/authclient (code)")
     return {"message": "Verification request sent."}
 
 
@@ -99,33 +146,33 @@ class ChannelQuery(BaseModel):
     NumberOfDays: int
 
 
-async def get_pyro_client():
-    # Initialize or ensure pyro_client is started
-    # This is just a placeholder. Adapt it to your actual pyro_client initialization logic.
-    if not pyro_client.is_connected:
-        await pyro_client.start()
-    return pyro_client
+# async def get_pyro_client():
+#     # Initialize or ensure pyro_client is started
+#     # This is just a placeholder. Adapt it to your actual pyro_client initialization logic.
+#     if not pyro_client.is_connected:
+#         await pyro_client.start()
+#     return pyro_client
 
 
-@app.post("/get_daily_views/")
-async def get_daily_views(query: ChannelQuery, client=Depends(get_pyro_client)):
-    try:
-        chat = await client.get_chat(query.ChannelId)
-        chat_id = chat.id
-
-        messages = await get_messages_from_past_days(chat_id, query.NumberOfDays, start_date=None)
-        views_by_day = await calculate_daily_views(messages, query.NumberOfDays)
-
-        daily_stats = [
-            {"date": str(day), "views": data["views"], "lastMessageId": data["last_message_id"]}
-            for day, data in views_by_day.items()
-        ]
-
-        return json.loads(json.dumps(daily_stats))  # FastAPI will automatically convert dict to JSON
-
-    except Exception as e:
-        logging.error(f"An error occurred: {e}")
-        raise HTTPException(status_code=500, detail="An error occurred while processing your request.")
+# @app.post("/get_daily_views/")
+# async def get_daily_views(query: ChannelQuery, client=Depends(get_pyro_client)):
+#     try:
+#         chat = await client.get_chat(query.ChannelId)
+#         chat_id = chat.id
+#
+#         messages = await get_messages_from_past_days(chat_id, query.NumberOfDays, start_date=None)
+#         views_by_day = await calculate_daily_views(messages, query.NumberOfDays)
+#
+#         daily_stats = [
+#             {"date": str(day), "views": data["views"], "lastMessageId": data["last_message_id"]}
+#             for day, data in views_by_day.items()
+#         ]
+#
+#         return json.loads(json.dumps(daily_stats))  # FastAPI will automatically convert dict to JSON
+#
+#     except Exception as e:
+#         logging.error(f"An error occurred: {e}")
+#         raise HTTPException(status_code=500, detail="An error occurred while processing your request.")
 
 
 async def send_notification(notification):
