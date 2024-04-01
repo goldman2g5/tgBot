@@ -1,6 +1,8 @@
 import json
 import logging
 
+from aiogram.dispatcher import FSMContext
+from aiogram.dispatcher.filters.state import State, StatesGroup
 from fastapi import FastAPI, HTTPException, Request, Depends
 from fastapi.encoders import jsonable_encoder
 from pydantic import BaseModel, ValidationError
@@ -15,6 +17,41 @@ from notification_service import *
 app = FastAPI()
 
 
+class VerificationStates(StatesGroup):
+    waiting_for_code = State()
+
+
+verification_codes_storage = {}
+
+
+@app.get("/get_verification_code/{user_id}")
+async def get_verification_code(user_id: int):
+    # Retrieve the verification code for the given user ID
+    verification_code = verification_codes_storage.get(user_id)
+    if verification_code:
+        # Optionally, remove the code from storage after retrieval if it should only be accessed once
+        del verification_codes_storage[user_id]
+        return {"user_id": user_id, "verification_code": verification_code}
+    else:
+        return {"error": "Verification code not found or has already been retrieved."}
+
+
+@dp.message_handler(state=VerificationStates.waiting_for_code)
+async def process_verification_code(message: types.Message, state: FSMContext):
+    # Store the received code in the temporary storage
+    verification_codes_storage[message.from_user.id] = message.text
+    await message.answer("Code received, thank you!")
+    await state.finish()
+
+
+@app.post("/trigger_verification/{user_id}")
+async def trigger_verification(user_id: int):
+    user_state = dp.current_state(user=user_id, chat=user_id)
+    await user_state.set_state(VerificationStates.waiting_for_code.state)
+    await bot.send_message(user_id, "Please reply with your verification code.")
+    return {"message": "Verification request sent."}
+
+
 class NotificationModel(BaseModel):
     ChannelAccess: object
     ChannelName: str
@@ -24,6 +61,7 @@ class NotificationModel(BaseModel):
     TelegramChatId: int
     TelegamChannelId: int
     ContentType: str
+
 
 @app.post("/send_notifications")
 async def send_notifications(notifications: List[NotificationModel]):
@@ -60,12 +98,14 @@ class ChannelQuery(BaseModel):
     ChannelId: int
     NumberOfDays: int
 
+
 async def get_pyro_client():
     # Initialize or ensure pyro_client is started
     # This is just a placeholder. Adapt it to your actual pyro_client initialization logic.
     if not pyro_client.is_connected:
         await pyro_client.start()
     return pyro_client
+
 
 @app.post("/get_daily_views/")
 async def get_daily_views(query: ChannelQuery, client=Depends(get_pyro_client)):
